@@ -198,6 +198,50 @@ the names disagree with the NEISS narratives for the same number:
   - Any recall/incident <-> NEISS link must be **text-based**: recall title/product name
     or SP category name matched to NEISS product names, with confidence, and documented.
 
+### Size and paging probe (2026-11-05, `uv run python build/probe_size.py`)
+
+There were 3 requests, all HTTP 200, with no auth challenge and no key in any body.
+Saved: `data/raw/saferproducts/size_probe/`.
+- **Total `IncidentDetails` = 71,858**, from
+  `$inlinecount=allpages&$top=1&$select=IncidentReportId,IncidentReportDate`.
+  - The `$inlinecount` response wraps rows as `{"d": {"results": [...], "__count": "71858"}}`.
+  - So the server speaks OData v2 when asked, even though it sends
+    `DataServiceVersion: 1.0`.
+- **The server caps an `IncidentDetails` page at 50 rows.** The cap is per entity set:
+  `ProductCategories` returned 1,000 rows per page. `$top=5000` returned 50 rows plus
+  `__next`:
+  `https://rmsprodweb1az.int.cpsc:442/...IncidentDetails?$select=...&$top=4950&$skiptoken=1170640`.
+  - That host is internal and unusable, the same as with the `__deferred` links.
+  - **Paging rule (proposed; `$skiptoken` not yet called directly):** rebuild the URL
+    on the public base and pass `$skiptoken=<last IncidentReportId>`. The first page
+    of the real pull verifies this.
+- Default order is ascending by `IncidentReportId`. The first page covers report dates
+  2011-03-11 to 2011-03-12.
+- `$skip=71855&$top=3` works, but took **4.66 s** (vs ~0.2 s for a normal page). Deep
+  `$skip` is slow, which is another reason to use `$skiptoken`.
+- The newest records are `IncidentReportId` 6,310,437-6,310,467, with report date
+  **2026-10-20**. Coverage is 2011-03 to 2026-10.
+- **Full-pull estimate (not run):**
+  - 71,858 / 50 = **~1,438 requests**.
+  - Time: ~6 min at 5 req/s, or ~12 min at 2 req/s, plus latency.
+  - Size: the 5-row full-field sample was 17,830 bytes, or ~3.5 KB/row with
+    `__metadata`, which gives **~250 MB of raw JSON** for all fields.
+  - Mean `IncidentDescription` in the sample was ~650 chars, so about 47 MB of
+    descriptions. Projected Parquet (zstd) with the selected columns is **~15-25 MB**.
+  - **These are estimates from a 5-row sample.**
+
+**Proposed pull scope (not executed; awaiting approval):**
+- Pull **all 71,858 incidents** with a `$select` of the columns in `docs/SCHEMA.md`
+  (`safer_incidents`).
+- Page with `$skiptoken` at **≤5 req/s**. The pull is resumable from the last id, and
+  pages are saved raw to `data/raw/saferproducts/incidents/`.
+- Filter locally, e.g. report or incident date ≥ 2019 to match the NEISS years.
+- Rationale: date `$filter` semantics on `/Date()` fields are untested. A full pull is
+  only ~1.4k requests, and local filtering is reproducible.
+- Alternative if time is short: pull only incidents whose `ProductCategoryId` is in the
+  name-crosswalked set for the top-50 NEISS products (an `$filter` OR-list). That is
+  fewer requests, but the request count is unknown.
+
 ---
 
 ## NEISS (2026-11-05)
@@ -326,8 +370,8 @@ export, real text layer). The relevant part is **Appendix H, "Numerical Listing 
 Product and Activity Codes"**, on pp. 198-214.
 - Command: `uv run python build/build_product_codes.py`, using `pypdf` 6.21.4, a dev
   dependency.
-- Output: `data/build/product_codes.parquet` (19.8 KB). Columns: `product_code,
-  product_title, source_page, source`.
+- Output: `data/processed/product_codes.parquet` (~20 KB). Columns: see
+  `docs/SCHEMA.md`.
 
 **Format:**
 - Each page has a header "Code Product Title", then one `NNNN Title` line per code.
@@ -364,6 +408,18 @@ Product and Activity Codes"**, on pp. 198-214.
 - -> Exclude 5555 from "top products" rankings, or label it as "unknown substance
   (poisoning, under 5)".
 
+**Product slot order does not matter** (coding manual, "Up to three product codes…"
+section, p. ~24-25):
+- Quote: "When multiple products are involved, it does not matter in what order you
+  enter them." So `Product_1` is **not** the primary product.
+- Also: if the same code applies twice, it is entered once. If Product 2 is 0000,
+  Product 3 is 0000 too.
+- -> Product rankings must count all three slots (`docs/SCHEMA.md` Rule 2).
+
+**Stability rule:** I searched the coding manual for "1,200", "unstable", "coefficient
+of variation", "fewer than 20", and "reliab". **None were found.** The CPSC minimum-case
+or CV rule is still unverified; `docs/SCHEMA.md` uses a configurable project threshold.
+
 **Not captured:** the manual says codes **underlined** in the alphabetical section fall
 "outside of CPSC" jurisdiction. Text extraction loses underlining, so that flag is
 **unverified** and not in the table.
@@ -380,7 +436,12 @@ loading 2019-2024.
   name-based crosswalk.
   - Example: NEISS 115 "Vacuum cleaners" = SP 382.
   - Example: NEISS 278 "Electric ranges or ovens (excl. counter-top ovens)" = SP 575.
-- 37 NEISS titles match more than one SP id. These need a tie-break rule.
+- 37 NEISS titles match more than one SP id: 35 match 2 ids and 2 match 3.
+  - These are **duplicate SP categories with identical name and description**: an older
+    id in 121-890 and a newer one in 1105-2248, e.g. Refrigerators 574/2096, Dishwashers
+    547/1912, Heat Pumps 364/1990.
+  - No two NEISS titles normalize to the same string.
+  - Rule (`docs/SCHEMA.md`): map all duplicates to the one NEISS code.
 - 172 NEISS titles have no exact match. "Nonportable Cribs" (SP 797) has no exact NEISS
   title match; fuzzy or manual matching is needed.
 - **UNVERIFIED:** that equal names mean the same scope in both systems. This is likely,
@@ -403,8 +464,9 @@ loading 2019-2024.
 - NEISS minimum-sample or CV rules for stable estimates.
 - SaferProducts API (entity sets, fields, auth, and JSON shape are verified above). Still
   open:
-  - total incident count, server page size, `__next` paging, and `$inlinecount`;
-  - `$filter`/`$orderby`/`$expand`/`$skip` support;
+  - `$filter` on date fields, `$orderby`, and `$expand`. Verified so far: `$select`,
+    `$top`, `$skip`, `$inlinecount`, and `$filter` with `eq` on an int. `$skiptoken`
+    is only advertised in `__next` and has not been called directly yet;
   - behavior when the 100 req/s limit is exceeded (429 or otherwise);
   - SP recall sets: `RecallDetails` returned 503 "Page Unavailable" twice. Whether they
     work at all, and which id scheme they use, is unknown;

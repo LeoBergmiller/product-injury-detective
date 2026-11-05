@@ -227,3 +227,12 @@ data/raw/
 
 # Our offline-build scripts live in /build (the template above ignores build/)
 !/build/
+
+# Processed outputs ARE tracked so the deploy ships with its data. Each file must be
+# under GitHub's 100 MB limit: build/build_db.py fails above 95 MB per file. Any file
+# that can't meet that goes to GCS instead and gets an explicit ignore line below.
+!/data/processed/
+/data/processed/*.wal
+/data/processed/*.tmp
+/data/processed/tmp/
+# (GCS-hosted outputs, if any, listed here)

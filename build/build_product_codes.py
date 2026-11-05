@@ -4,7 +4,7 @@ Appendix H ("Numerical Listing of NEISS Product and Activity Codes") lists one
 "NNNN Title" entry per line, under a "Code Product Title" header on each page.
 Only pages with that header are parsed. The appendix has no category headings.
 
-Output: data/build/product_codes.parquet (see docs/SCHEMA.md once written).
+Output: data/processed/product_codes.parquet (contract: docs/SCHEMA.md).
 Also logs coverage against the NEISS codes actually used in the configured files.
 
 Usage: uv run python build/build_product_codes.py [--config build/config.yaml]
@@ -37,6 +37,8 @@ class ProductCodesConfig:
     page_header: str
     out_parquet: Path
     coverage_tsvs: list[Path]
+    placeholder_codes: list[int]
+    catch_all_regex: str
 
     @classmethod
     def from_yaml(cls, path: Path) -> ProductCodesConfig:
@@ -47,6 +49,8 @@ class ProductCodesConfig:
             page_header=raw["page_header"],
             out_parquet=REPO_ROOT / raw["out_parquet"],
             coverage_tsvs=[REPO_ROOT / p for p in raw["coverage_tsvs"]],
+            placeholder_codes=[int(c) for c in raw["placeholder_codes"]],
+            catch_all_regex=raw["catch_all_regex"],
         )
 
 
@@ -107,16 +111,31 @@ def write_parquet(cfg: ProductCodesConfig, entries: list[Entry]) -> None:
         """CREATE TABLE product_codes (
             product_code INTEGER PRIMARY KEY,
             product_title VARCHAR NOT NULL,
+            is_placeholder BOOLEAN NOT NULL,
+            is_catch_all BOOLEAN NOT NULL,
             source_page INTEGER NOT NULL,
             source VARCHAR NOT NULL)"""
     )
+    catch_all = re.compile(cfg.catch_all_regex, re.IGNORECASE)
     con.executemany(
-        "INSERT INTO product_codes VALUES (?, ?, ?, ?)",
+        "INSERT INTO product_codes VALUES (?, ?, ?, ?, ?, ?)",
         [
-            (e.product_code, e.product_title, e.source_page, cfg.manual_label)
+            (
+                e.product_code,
+                e.product_title,
+                e.product_code in cfg.placeholder_codes,
+                bool(catch_all.search(e.product_title)),
+                e.source_page,
+                cfg.manual_label,
+            )
             for e in entries
         ],
     )
+    n_ph, n_ca = con.sql(
+        "SELECT count(*) FILTER (WHERE is_placeholder), "
+        "count(*) FILTER (WHERE is_catch_all) FROM product_codes"
+    ).fetchall()[0]
+    LOG.info("Flags: %d placeholder, %d catch-all titles", n_ph, n_ca)
     con.execute(f"COPY product_codes TO '{cfg.out_parquet}' (FORMAT parquet)")
     LOG.info("Wrote %s", cfg.out_parquet.relative_to(REPO_ROOT))
 

@@ -39,7 +39,10 @@ product_codes:
   manual_pdf: "docs/JANUARY-2025-NEISS-CPSC-only-Coding-Manual-Rev-1.pdf"
   manual_label: "NEISS Coding Manual, January 2025 (rev.1), Appendix H"
   page_header: "Code Product Title"      # marks Appendix H listing pages
-  out_parquet: "data/build/product_codes.parquet"
+  out_parquet: "data/processed/product_codes.parquet"
+  placeholder_codes: [5555]   # not a product; see docs/SCHEMA.md
+  # Titles matching this regex are catch-all buckets (labelled, not excluded)
+  catch_all_regex: "\\b(other|not specified|not elsewhere classified)\\b"
   # NEISS files used only for the coverage check
   coverage_tsvs:
     - "data/raw/neiss/neiss2025.tsv"

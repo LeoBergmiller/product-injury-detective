@@ -104,12 +104,16 @@ class Client:
             raise StopProbe(f"{label}: response body contains the API key")
         time.sleep(self.pc.delay_s)
 
-    def odata(self, label: str, path: str, params: dict[str, Any]) -> list[dict]:
+    def odata_raw(self, label: str, path: str, params: dict[str, Any]) -> Any:
+        """GET an OData resource; save and return the parsed JSON payload as-is."""
         url = self.sp.base_url + path + "?" + urllib.parse.urlencode(params)
         resp = get(url, self._auth, "application/json", self.sp.timeout_s)
         self._check(label, resp)
         (self.pc.out_dir / f"{label}.json").write_bytes(resp.body)
-        payload = json.loads(resp.body)
+        return json.loads(resp.body)
+
+    def odata(self, label: str, path: str, params: dict[str, Any]) -> list[dict]:
+        payload = self.odata_raw(label, path, params)
         data = payload.get("d", payload.get("value"))
         if isinstance(data, dict):
             if "__next" in data:
