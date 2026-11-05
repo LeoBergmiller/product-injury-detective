@@ -1,0 +1,18 @@
+# Offline-build configuration. Paths are relative to the repo root.
+
+saferproducts:
+  base_url: "https://www.SaferProducts.gov/WebApi/Cpsc.Cpsrms.Web.Api.svc/"
+  key_env_var: "SAFERPRODUCTS_KEY"   # read from the environment or .env, never logged
+  env_file: ".env"
+  out_dir: "data/raw/saferproducts"
+  timeout_s: 60
+  # Entity set to sample. Leave null to log all sets and sample the first one.
+  entity_set: null
+  sample_top: 5
+  # Accept headers tried in order for JSON (WCF OData services vary).
+  accept_headers:
+    - "application/json"
+    - "application/json;odata=verbose"
+  # Gentle rate probe: well under the documented 100 req/s per key.
+  rate_probe_requests: 20
+  rate_probe_delay_s: 0.0

@@ -52,3 +52,10 @@ Framing: practical for parents and caregivers, with an older-adult angle (e.g. 6
 ## Working rules
 - Cite only what you verified. Mark anything unverified as such.
 - Never invent column names, URLs, or API fields. Check the real files
+
+## Repo and deploy requirements (from the handout)
+- Repo root must contain: app.py, pyproject.toml, uv.lock, README.md, submission.json ({"deploy_url": ..., "authors": [UNIs], "path": "text2sql"}).
+- Use uv for dependencies. Deploy to Cloud Run with continuous deploy from GitHub. Keep the service running until grades are released.
+- Set a Cloud Run request timeout that allows up to 5 minutes and cap the agent's max_turns.
+- Optional ambition: host data in GCS/BigQuery (queryable with DuckDB) instead of only local files.
+- Non-credit peer review scores Experience & Usefulness, Risk-Taking & Ambition, and Originality & Voice, so design for a smooth first-use experience.

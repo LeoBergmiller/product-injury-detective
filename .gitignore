@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Raw data downloads (never commit)
+data/raw/
+
+# macOS
+.DS_Store
+
+# Our offline-build scripts live in /build (the template above ignores build/)
+!/build/
