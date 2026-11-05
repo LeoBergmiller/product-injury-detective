@@ -2,8 +2,18 @@
 
 This is the interface between the source builders and the final database. Each source is
 built **independently** into its own Parquet file in `data/processed/`.
-`build/build_db.py` assembles them into `data/processed/injuries.duckdb`, adds the views,
-and fails if any table doesn't match this file.
+`neiss_cases` is the exception: it is one file per year in `data/processed/neiss_cases/`
+(see Changelog). `build/build_db.py` assembles everything into
+`data/processed/injuries.duckdb`, adds the views, and fails if any table doesn't match
+this file.
+
+**Database layout ("thin DB").**
+- `neiss_cases` and `neiss_case_products` are **views over the committed Parquet
+  files**, using paths relative to the repo root. **Open the DB with the working
+  directory set to the repo root.**
+- All other tables are stored inside the DB.
+- Reason: DuckDB's native storage of the narratives would be ~207 MB, versus ~114 MB
+  as zstd Parquet.
 
 - **Single source of truth.** `build_db.py` parses the column tables below to validate
   every Parquet file (names, types, order) and to fill the `data_dictionary` table.
@@ -20,12 +30,16 @@ and fails if any table doesn't match this file.
 
 | Parquet in `data/processed/` | Script | Owner | Inputs |
 |---|---|---|---|
-| `neiss_cases`, `neiss_case_products`, `neiss_codebook` | `build/build_neiss.py` | Leo | NEISS yearly TSVs, `docs/DataDictionary042022.xlsx` |
-| `product_codes` | `build/build_product_codes.py` (done) | Leo | Coding manual, Appendix H |
-| `recalls`, `recall_products` | `build/build_recalls.py` | **TBD** | Recalls API (one full pull) |
-| `safer_incidents`, `safer_codebook` | `build/build_saferproducts.py` | **TBD** | SaferProducts OData (`$skiptoken` paging, ≤5 req/s) |
+| `neiss_cases/` (one file per year), `neiss_case_products`, `neiss_codebook`, `product_code_stability` | `build/build_neiss.py` | Leo | NEISS yearly TSVs, `docs/DataDictionary042022.xlsx` |
+| `product_codes` | `build/build_product_codes.py` | Leo | Coding manual, Appendix H |
+| `recalls`, `recall_products` | `build/fetch_recalls.py` + `build/build_recalls.py` | **TBD** | Recalls API, one request per year |
+| `safer_incidents`, `safer_codebook` | `build/fetch_saferproducts_incidents.py` + `build/build_saferproducts.py` | **TBD** | SaferProducts OData (`$skiptoken` paging, ≤5 req/s) |
 | `safer_category_xwalk`, `product_recall_xwalk` | `build/build_xwalks.py` | **TBD** | the above + `build/seeds/product_recall_xwalk.csv` |
 | `injuries.duckdb` (all tables + views) | `build/build_db.py` | Leo | all Parquet above |
+
+Run order: `build_product_codes` → `build_neiss` → `build_saferproducts` →
+`build_recalls` → `build_xwalks` → `build_db`. The fetch scripts run only when
+refreshing the raw pulls.
 
 Owners marked TBD are for the team to assign (arapinan, rainliu19).
 
@@ -71,10 +85,17 @@ Owners marked TBD are for the team to assign (arapinan, rainliu19).
    - NEISS codes and SaferProducts `ProductCategoryId` are different numbering schemes.
      They overlap numerically by coincidence (e.g. 1807 = floors vs. SP "Drywall
      Control").
-   - Recalls API `Products[].CategoryID` (and `Type`, `HazardTypeID`) were **empty in
-     119/119 recalls** checked (Oct 2024 and Q1 2025).
-   - So: incidents link to NEISS **by exact product name**, and recalls link **by text
-     search only**. **Never join on numbers across sources.**
+   - Recalls API `Products[].CategoryID` / `Type` are **empty for every recall dated
+     2017-2025**. They are filled for most recalls through 2015, partly in 2016, and
+     for 116 of 514 in 2026.
+     - Where filled, they are **SaferProducts category ids, not NEISS codes**: 5,501 of
+       7,151 have a `Type` equal to the SP name for that id.
+     - `HazardTypeID` is empty everywhere.
+   - So: incidents link to NEISS **by exact product name**. Recalls link by **text
+     search**, plus the category-id chain for older recalls (`sp_category_id` method).
+     **Never join on numbers across sources.**
+   - **SP sex ids are the reverse of NEISS:** SP 1 = Female, 2 = Male, 3 = Unknown;
+     NEISS 1 = Male, 2 = Female. Always use the labels.
 7. **Claims.** NEISS is a probability sample, so use weights. SaferProducts reports are
    voluntary and **not representative**. Recalls are descriptive context, **not
    evidence of cause**.
@@ -149,9 +170,32 @@ From the January 2025 coding manual, Appendix H. 806 codes; covers every 2025 co
 | source_page | INTEGER | no | PDF page |
 | source | VARCHAR | no | Manual edition and appendix |
 
-Codes retired before 2025 have no title until the comparability tables are added. The
-build lists any `neiss_case_products.product_code` that has no title and fails if the
-list is non-empty.
+Codes retired before 2025 have no title until the comparability tables are added.
+- Seven such codes appear in 2019-2024: 1329, 1543, 1545, 1710, 1903, 3215, and 5042.
+  Together they are 0.35% of weighted case-product mentions.
+- They are allowlisted in `build/config.yaml` (`neiss.untitled_codes_allowed`). The
+  build **fails on any other** untitled code.
+- Views label them "Code N (title unknown: not in Jan 2025 coding manual)" and set
+  `title_unknown = true`. Titles are never guessed.
+
+### product_code_stability
+Empirical presence of each code in the loaded years, from `build_neiss.py`.
+Grain: `product_code`.
+
+**Presence is not definitional stability.** A code can appear every year and still be
+redefined, split, or merged. Only the comparability tables can show that, and they are
+not in `docs/` yet, so `comparability_checked` is NULL.
+
+| column | type | null | notes |
+|---|---|---|---|
+| product_code | INTEGER | no | PK |
+| first_year | SMALLINT | no | First loaded year with any case |
+| last_year | SMALLINT | no | Last loaded year with any case |
+| n_years | SMALLINT | no | Number of loaded years present |
+| years_present | SMALLINT[] | no | Sorted list of years |
+| present_all_years | BOOLEAN | no | True if present in every loaded year |
+| comparability_checked | BOOLEAN | yes | NULL until the comparability tables are parsed |
+| notes | VARCHAR | yes | e.g. `absent in 2019,2020` |
 
 ## Recalls tables (Recalls API)
 
@@ -175,18 +219,19 @@ Grain: `recall_id`. A response containing `RecallID = 0` or a `Title` starting w
 | search_text | VARCHAR | no | Lowercased title + product names + hazards + description, for search |
 
 ### recall_products
-Grain: (`recall_id`, `product_seq`). `CategoryID` and `Type` are **not stored** because
-they were empty in every record checked. The builder asserts they are still empty and
-logs any non-empty value instead of dropping it silently.
+Grain: (`recall_id`, `product_seq`). `CategoryID` / `Type` are stored where present
+(Rule 6). They are SaferProducts category ids, **not NEISS codes**.
 
 | column | type | null | notes |
 |---|---|---|---|
 | recall_id | INTEGER | no | FK `recalls` |
 | product_seq | SMALLINT | no | Position in `Products[]` |
-| name | VARCHAR | no | `Name` |
+| name | VARCHAR | yes | `Name` (358 of 11,878 are empty) |
 | description | VARCHAR | yes | `Description` |
 | model | VARCHAR | yes | `Model` |
 | units_text | VARCHAR | yes | `NumberOfUnits`. Prose, e.g. "About 640 (…)"; not numeric |
+| category_id | INTEGER | yes | `CategoryID`. SP category id. NULL for all 2017-2025 recalls |
+| category_name | VARCHAR | yes | `Type`. SP-style category name |
 
 ## SaferProducts tables
 
@@ -208,13 +253,13 @@ are converted as UTC.
 | manufacturer_name | VARCHAR | yes | `ProductManufacturerName` |
 | retailer_name | VARCHAR | yes | `ProductRetailCompanyName` |
 | description | VARCHAR | yes | `IncidentDescription`. Free text, voluntary |
-| severity_type_id | SMALLINT | yes | `safer_codebook` (SeverityTypes) |
-| locale_id | SMALLINT | yes | -1 -> NULL. Meaning of -1 unverified |
-| victim_sex_id | SMALLINT | yes | `safer_codebook` (Sexes) |
+| severity_type_id | SMALLINT | yes | `safer_codebook` (SeverityTypes). -1 ("Unspecified") -> NULL |
+| locale_id | SMALLINT | yes | `safer_codebook` (Locales). -1 ("Unspecified") -> NULL |
+| victim_sex_id | SMALLINT | yes | `safer_codebook` (Sexes): **1 = Female, 2 = Male**, 3 = Unknown. -1 (not defined in the lookup) -> NULL |
 | victim_age_months | INTEGER | yes | `VictimAgeInMonths`. **0 -> NULL** (unknown) |
 | victim_age_years | SMALLINT | yes | `victim_age_months // 12` |
 | victim_age_group | VARCHAR | no | Same bands as NEISS; `unknown` if NULL |
-| source_type_id | SMALLINT | yes | `safer_codebook` (SourceTypes) |
+| source_type_id | SMALLINT | yes | `safer_codebook` (SourceTypes). -1 ("Unspecified") -> NULL |
 
 ### safer_codebook
 Grain: (`lookup`, `id`). Covers ProductCategories, SeverityTypes, Locales, Sexes,
@@ -253,16 +298,29 @@ Grain: `sp_category_id`.
 | notes | VARCHAR | yes | |
 
 ### product_recall_xwalk
-A **text-based** link from NEISS products to recalls. There is no code link (Rule 6).
+A **text-based** link from NEISS products to recalls. There is no NEISS code in the
+recall data (Rule 6).
 
-- **Scope:** the union of the top 50 NEISS codes by weighted visits (any slot,
-  placeholder excluded, across the shipped years) for three groups: **all ages,
-  under 5, and 65+**.
+- **Scope:** the union of the top 50 NEISS codes by weighted visits for three groups:
+  **all ages, under 5, and 65+**.
+  - Ranking uses any slot and all loaded years, excluding the placeholder and untitled
+    codes.
+  - The union is 92 codes as of 2026-11-05.
 - **Process:**
-  1. `build_xwalks.py` writes candidate rows: search terms derived from the product
-     title, plus the recalls whose `search_text` matches them.
-  2. A person reviews them in the seed CSV `build/seeds/product_recall_xwalk.csv`.
+  1. `build_xwalks.py` writes the draft `build/seeds/product_recall_xwalk.draft.csv`
+     on every run.
+  2. The reviewed seed `build/seeds/product_recall_xwalk.csv` is created from the
+     draft **only if it doesn't exist**, and is never overwritten.
   3. The Parquet is built from the seed.
+  - The CSVs also carry reviewer-only columns (`product_title, recall_date,
+    recall_title, matched_in`), which the Parquet drops.
+- **Confidence is a heuristic from where the match occurs. It is not a correctness
+  claim.**
+  - `high`: a term in the recall title, used as the product noun.
+  - `medium`: a term in the title used as a modifier ("Floor Lamps"), a term in a
+    product or category name, or the category-id chain.
+  - `low`: a term only in the hazard or description text.
+  - Medium and low are capped at 25 per code (most recent kept).
 - Grain: (`neiss_code`, `recall_id`). There is also one terms-only row per
   `neiss_code`, where `recall_id` is NULL.
 
@@ -271,8 +329,8 @@ A **text-based** link from NEISS products to recalls. There is no code link (Rul
 | neiss_code | INTEGER | no | FK `product_codes` |
 | recall_id | INTEGER | yes | FK `recalls`. NULL on the terms-only row |
 | search_terms | VARCHAR | no | The exact terms used, e.g. `bunk bed; bunk beds` |
-| match_method | VARCHAR | no | `text_search` or `manual` |
-| confidence | VARCHAR | no | `high`, `medium`, or `low` |
+| match_method | VARCHAR | no | `text_search`, `sp_category_id` (recall CategoryID -> SP name -> NEISS title; older recalls only), or `manual` |
+| confidence | VARCHAR | no | `high`, `medium`, or `low` (heuristic, see above). Terms-only rows: `low` |
 | audited | BOOLEAN | no | True only after human review of the recall text |
 | scope_groups | VARCHAR | no | Subset of `all,under5,65plus` |
 | notes | VARCHAR | yes | Why it matches, or why it is excluded |
@@ -281,10 +339,32 @@ A **text-based** link from NEISS products to recalls. There is no code link (Rul
 
 | view | definition |
 |---|---|
-| `v_case_products` | `neiss_cases` ⨝ `neiss_case_products` ⨝ `product_codes`: one row per (case, distinct product) |
-| `v_product_estimates` | By `year, age_group, product_code`: `n_cases`, `est_visits = SUM(weight)`, `low_sample`, `is_placeholder`, `is_catch_all`, `product_title` (Rules 1, 2, 5) |
-| `v_top_products` | `v_product_estimates` without placeholders, ranked by `est_visits` within year and age group |
+| `v_case_products` | `neiss_cases` ⨝ `neiss_case_products` ⟕ `product_codes`: one row per (case, distinct product). Adds `product_title` (with the untitled-code fallback label), `is_placeholder`, `is_catch_all`, `title_unknown` |
+| `v_product_estimates` | By `year, age_group, product_code`, **plus `age_group = 'all'` rows**: `product_title`, `n_cases`, `est_visits = SUM(weight)`, `low_sample` (`n_cases < min_cases`), `is_placeholder`, `is_catch_all`, `title_unknown` (Rules 1, 2, 5). **Never sum across `age_group`, because `'all'` is included, and never sum across products** |
+| `v_top_products` | `v_product_estimates` without placeholders, plus `rank` by `est_visits` within (`year`, `age_group`) |
 | `v_recall_search` | `recall_id, recall_date, title, hazards_text, search_text` for keyword search (`ILIKE`). If the DuckDB `fts` extension loads at build time, `build_db.py` also creates a BM25 index on `recalls.search_text`. Its availability in the Cloud Run image is **unverified**, so the agent must work with `ILIKE` alone |
 | `v_recalls_for_product` | `product_recall_xwalk` ⨝ `recalls` ⨝ `product_codes`, with `confidence` and `audited` exposed. The agent must state when `audited = false` |
-| `v_safer_incidents_neiss` | `safer_incidents` ⟕ `safer_category_xwalk` ⟕ `product_codes`. `neiss_code` is NULL when unmatched |
-| `data_dictionary` (table) | `table_name, column_name, type, nullable, notes`, parsed from this file |
+| `v_safer_incidents_neiss` | `safer_incidents` ⟕ `safer_category_xwalk` ⟕ `product_codes` ⟕ `safer_codebook`. Adds `neiss_code`, `neiss_product_title`, `sp_category_name`, `victim_sex_label`, `severity_label`. `neiss_code` is NULL when unmatched |
+| `data_dictionary` (table) | `table_name, column_name, type, nullable, notes`, parsed from this file. Views get one row each, with `column_name = '*'` |
+
+## Changelog (deviations from the 2026-11-05 contract)
+
+All changes are additive or loosen a rule. No column was removed or renamed.
+
+1. **`neiss_cases` is one Parquet per year** (`data/processed/neiss_cases/
+   neiss_cases_{year}.parquet`). As a single file it was 114 MB, over the 95 MB
+   per-file limit; the narratives are 92 MB of that. The columns are unchanged.
+2. **Thin DB:** `neiss_cases` and `neiss_case_products` are views over Parquet. A DB
+   with the narratives stored natively measured 207 MB.
+3. **New table `product_code_stability`.** Comparability-table parsing is blocked
+   because the PDFs are not in `docs/`.
+4. **Untitled-code allowlist.** The rule was "fail on any untitled code". It is now
+   "fail unless allowlisted"; 7 retired codes are allowlisted, and views label them.
+5. **`recall_products.category_id` / `category_name` added.** The earlier "always
+   empty" finding held only for 2017-2025.
+6. **`recall_products.name` is nullable.** 358 of 11,878 are empty in the API.
+7. **`safer_incidents`: -1 -> NULL** also for `severity_type_id`, `victim_sex_id`, and
+   `source_type_id`. The lookups define -1 as "Unspecified"; sex -1 is undefined.
+8. **`product_recall_xwalk.match_method` adds `sp_category_id`.** Terms-only rows use
+   `confidence = 'low'`. Reviewer-only CSV columns are documented above.
+9. **`v_product_estimates` adds `age_group = 'all'` rows** and a `title_unknown` flag.

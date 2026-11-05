@@ -17,10 +17,63 @@ saferproducts:
   rate_probe_requests: 20
   rate_probe_delay_s: 0.0
 
+saferproducts_incidents:
+  out_dir: "data/raw/saferproducts/incidents"
+  min_interval_s: 0.25          # <= 4 req/s (approved limit: 5 req/s)
+  retries: 3
+  backoff_s: 2.0
+  timeout_s: 120
+  entity_set: "IncidentDetails"
+  select:
+    - IncidentReportId
+    - IncidentReportNumber
+    - IncidentReportDate
+    - IncidentReportPublicationDate
+    - IncidentDate
+    - ProductCategoryId
+    - IncidentProductDescription
+    - ProductBrandName
+    - ProductModelName
+    - ProductManufacturerName
+    - ProductRetailCompanyName
+    - IncidentDescription
+    - SeverityTypeId
+    - LocaleId
+    - VictimGenderId
+    - VictimAgeInMonths
+    - SourceTypeId
+  # Small lookup sets for safer_codebook (one or a few requests each)
+  lookups:
+    ProductCategories: ["ProductCategoryId", "ProductCategoryPublicName", "ProductCategoryDescription"]
+    SeverityTypes: ["SeverityTypeId", "SeverityTypePublicName", "SeverityTypeDescription"]
+    Locales: ["LocaleId", "LocalePublicName", "LocaleDescription"]
+    Sexes: ["SexId", "SexPublicName", "SexDescription"]
+    SourceTypes: ["SourceTypeId", "SourceTypePublicName", "SourceTypeDescription"]
+    RelationshipTypes: ["RelationshipTypeId", "RelationshipTypePublicName", "RelationshipTypeDescription"]
+  lookup_page_size: 1000
+
+saferproducts_build:
+  pages_dir: "data/raw/saferproducts/incidents/pages"
+  lookups_dir: "data/raw/saferproducts/incidents/lookups"
+  tmp_dir: "data/processed/tmp"
+  out_dir: "data/processed"
+  expected_rows_min: 71858        # $inlinecount on 2026-11-05
+  # -1 means "Unspecified" in the lookups (VictimGenderId -1 is not defined at all)
+  minus_one_to_null: [severity_type_id, locale_id, victim_sex_id, source_type_id]
+
 recalls:
   base_url: "https://www.saferproducts.gov/RestWebServices/Recall"
   out_dir: "data/raw/recalls"
   timeout_s: 120
+  snapshot_dir: "data/raw/recalls/snapshot"
+  start_year: 1970
+  end_year: 2026
+  min_interval_s: 0.5           # <= 2 req/s (approved limit)
+  retries: 3
+  backoff_s: 2.0
+  out_dir_processed: "data/processed"
+  tmp_dir: "data/processed/tmp"
+  text_joiner: " | "
 
 join_probe:
   out_dir: "data/raw/saferproducts/join_probe"
@@ -34,6 +87,105 @@ join_probe:
     - ["2024-10-01", "2024-10-31"]
     - ["2025-01-01", "2025-03-31"]
   neiss_tsv: "data/raw/neiss/neiss2025.tsv"
+
+neiss:
+  raw_dir: "data/raw/neiss"
+  file_pattern: "neiss{year}.tsv"
+  years: [2019, 2020, 2021, 2022, 2023, 2024, 2025]
+  tmp_dir: "data/processed/tmp"           # repaired TSVs; gitignored
+  out_dir: "data/processed"
+  product_codes_parquet: "data/processed/product_codes.parquet"
+  dictionary_xlsx: "docs/DataDictionary042022.xlsx"
+  dictionary_sheet: "2019 and beyond"
+  narrative_era_cutoff: "2019-01-01"
+  expected_columns: [CPSC_Case_Number, Treatment_Date, Age, Sex, Race, Other_Race,
+    Hispanic, Body_Part, Diagnosis, Other_Diagnosis, Body_Part_2, Diagnosis_2,
+    Other_Diagnosis_2, Disposition, Location, Fire_Involvement, Product_1, Product_2,
+    Product_3, Alcohol, Drug, Narrative_1, Stratum, PSU, Weight]
+  # [low, high, label]; high null = open-ended. Project bands (docs/SCHEMA.md Rule 4)
+  age_bands: [[0, 4, "0-4"], [5, 14, "5-14"], [15, 24, "15-24"], [25, 44, "25-44"],
+    [45, 64, "45-64"], [65, null, "65+"]]
+  # Dictionary variable (Excel/Tab name) -> neiss_cases column(s)
+  codebook_columns:
+    Age: [age_raw]
+    Sex: [sex]
+    Race: [race]
+    Hispanic: [hispanic]
+    Body_Part: [body_part, body_part_2]
+    Diagnosis: [diagnosis, diagnosis_2]
+    Disposition: [disposition]
+    Location: [location]
+    Fire_Involvement: [fire_involvement]
+    Alcohol: [alcohol]
+    Drug: [drug]
+  # Codes seen in 2019-2024 data that are NOT in the Jan 2025 manual (likely retired or
+  # renumbered). Titles need the 2024/2025 comparability tables (not in docs/ yet).
+  # The build fails on any OTHER untitled code. Do not add titles here by guessing.
+  untitled_codes_allowed: [1329, 1543, 1545, 1710, 1903, 3215, 5042]
+  # Pure "unknown / not recorded" codes. NOT included on purpose: body_part 0
+  # (Internal), diagnosis 71 (Other/Not Stated: mixed), alcohol/drug/fire 0
+  # ("no OR no information": ambiguous, see SCHEMA Rule 3).
+  unknown_codes:
+    age_raw: [0]
+    sex: [0]
+    race: [0]
+    hispanic: [0]
+    body_part: [87]
+    body_part_2: [87]
+    disposition: [9]
+    location: [0]
+
+build_db:
+  processed_dir: "data/processed"
+  schema_md: "docs/SCHEMA.md"
+  db_path: "data/processed/injuries.duckdb"
+  max_file_mb: 95
+  min_cases: 20                  # project low-sample rule (CPSC rule unverified)
+  # Every contract table is a VIEW over its Parquet (repo-relative path; open the DB
+  # from the repo root). DuckDB native storage of free text measured 3-4x larger than
+  # zstd Parquet (safer_incidents 97.5 MB vs 23 MB), so nothing is stored natively
+  # unless listed in `materialize` (e.g. recalls, if an FTS index is wanted later).
+  parquet_overrides:
+    neiss_cases: "data/processed/neiss_cases/*.parquet"
+  materialize: []
+  # Grain (unique key) per table, checked on load
+  grains:
+    neiss_cases: [case_id]
+    neiss_case_products: [case_id, product_code]
+    neiss_codebook: [variable, code]
+    product_codes: [product_code]
+    product_code_stability: [product_code]
+    recalls: [recall_id]
+    recall_products: [recall_id, product_seq]
+    safer_incidents: [incident_report_id]
+    safer_codebook: [lookup, id]
+    safer_category_xwalk: [sp_category_id]
+    product_recall_xwalk: [neiss_code, recall_id]
+  untitled_label: "Code {code} (title unknown: not in Jan 2025 coding manual)"
+  sanity:
+    weight_total_2025: 16485413
+    under5_2025_correct: 1469070
+    under5_2025_naive: 856149
+    safer_incidents_min: 71858
+    recalls_min: 10082
+    years: [2019, 2020, 2021, 2022, 2023, 2024, 2025]
+
+xwalks:
+  out_dir: "data/processed"
+  seed_csv: "build/seeds/product_recall_xwalk.csv"        # human-reviewed; never overwritten
+  draft_csv: "build/seeds/product_recall_xwalk.draft.csv"  # regenerated each run
+  top_n: 50
+  # scope group -> SQL predicate on neiss_cases (age rule from docs/SCHEMA.md)
+  scope_groups:
+    all: "TRUE"
+    under5: "age_years < 5"
+    65plus: "age_years >= 65"
+  # Words removed when deriving search terms from NEISS product titles
+  stop_phrases: ["other or not specified", "not elsewhere classified", "not specified",
+    "activity, apparel or equipment", "activity, apparel, or equipment", "other",
+    "accessories", "n.e.c.", "nonportable"]
+  min_term_len: 4
+  max_lowconf_per_code: 25      # cap text-only (low/medium) candidates per code
 
 product_codes:
   manual_pdf: "docs/JANUARY-2025-NEISS-CPSC-only-Coding-Manual-Rev-1.pdf"

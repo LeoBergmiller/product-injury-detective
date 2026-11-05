@@ -194,7 +194,9 @@ the names disagree with the NEISS narratives for the same number:
   scheme.
   - NEISS uses its own codes.
   - SP `ProductCategoryId` is a different numbering.
-  - The Recalls API has empty codes.
+  - The Recalls API had empty codes in these windows. **Corrected 2026-11-05 by the
+    full snapshot:** they are empty for 2017-2025 only, and filled (with SP category
+    ids) for most older recalls. See "Offline build" below.
   - Any recall/incident <-> NEISS link must be **text-based**: recall title/product name
     or SP category name matched to NEISS product names, with confidence, and documented.
 
@@ -451,14 +453,196 @@ loading 2019-2024.
 
 ---
 
+## Offline build, 2019-2025 (2026-11-05)
+
+Scripts are in `build/`, the contract is `docs/SCHEMA.md`, and all parameters live in
+`build/config.yaml`.
+
+### NEISS 2019-2025 (`build_neiss.py`)
+**Inputs:** `data/raw/neiss/neiss2019.tsv` … `neiss2025.tsv`, added by Leo. All seven
+have the **identical 25-column header**, ASCII text, and CRLF line endings.
+
+**Quoting:**
+- Fields containing commas are wrapped in `"`, with `""` escapes; ~4.6k narratives
+  per year.
+- Every year is balanced (0 unclosed quotes).
+- 2024 and 2025 each have one quoted `Other_Diagnosis` containing a tab
+  (`"NASAL SEPTAL DEVIATION<TAB>"`). A quote-aware reader handles it.
+
+**Defects repaired** (logged in `data/processed/tmp/neiss_repairs.json`):
+
+| Year | Case | Defect | Repair |
+|---|---|---|---|
+| 2019 | 190746091 | Unquoted CR LF inside the narrative | Lines joined with one space |
+| 2021 | 210332827, 210760065 | Same | Same |
+| 2023 | 230975940 | Same | Same |
+| 2023 | 240131872, 240152467 | Lone LF inside a field (not CR LF) | LF replaced with one space |
+
+- A split record arrives as 22 + 4 fields; joined, it is exactly 25.
+- 2020, 2022, 2024, and 2025 needed no repair.
+
+**Validation (all pass):**
+- Case ids are unique across years.
+- Every date parses, and its year equals the file year.
+- `Age` is in {0, 2-120, 201-223}.
+- Weights are > 0.
+- All coded columns are integers, and every code is in the dictionary codebook.
+- No case has the same code in two slots.
+
+**Rows and weighted totals per year:**
+
+| Year | Rows | Weighted visits |
+|---|---|---|
+| 2019 | 358,715 | 13,464,372 |
+| 2020 | 309,370 | 10,994,077 |
+| 2021 | 340,442 | 11,738,091 |
+| 2022 | 323,343 | 12,663,028 |
+| 2023 | 338,262 | 12,740,256 |
+| 2024 | 361,672 | 15,068,979 |
+| 2025 | 410,201 | 16,485,413 |
+| **Total** | **2,442,005** | |
+
+**Product codes:**
+- 2,902,818 (case, product) rows. 17.2% of 2025 cases list more than one product.
+- **7 codes in 2019-2024 are not in the January 2025 manual:** 1329 (2019 only),
+  1543, 1545, 1710, 1903, 3215 (2019-2023; 5,936 case-products, ~254k visits), and
+  5042 (2019 only).
+  - Together they are 0.35% of weighted case-product mentions.
+  - They are allowlisted, with no guessed titles.
+- **Presence:** 710 codes appear in all seven years and 94 do not. Presence is not
+  definitional stability.
+- **Comparability PDFs (2024, 2025) are not in `docs/`**, so the definitional-stability
+  check is blocked.
+
+**Codebook:** 151 entries from the "2019 and beyond" sheet. The age range rows are
+skipped; Rule 4 handles age.
+
+**Sizes:**
+- One file per year in `data/processed/neiss_cases/`: 14.0-19.9 MB each, 114 MB total.
+- As a single file it is 114 MB, over the limit. The narratives are 92 MB of that.
+- A DuckDB with the narratives stored natively measured 207 MB; without narratives,
+  64 MB.
+
+### SaferProducts incidents (`fetch_saferproducts_incidents.py`, `build_saferproducts.py`)
+**Pull:**
+- Test first: page 1 returned 50 rows, and its `__next` pointed at the internal host
+  `rmsprodweb2az.int.cpsc:442`.
+- `$skiptoken=1170640` equals the last id. Page 2, rebuilt on the public host, starts
+  at id 1170643.
+- **Full pull:** 1,438 pages, **71,858 rows** (equal to `$inlinecount`), and 1,446
+  requests including 8 for lookups.
+- About 4 req/s, **0 retries**, ~7 min.
+- 109 MB of raw JSON in `data/raw/saferproducts/incidents/pages/`; the run is
+  resumable via `checkpoint.json`.
+
+**Lookups:**
+- `-1` = "Unspecified" in SeverityTypes, Locales, SourceTypes, and RelationshipTypes.
+- `VictimGenderId` has 16,883 rows with `-1`, which **is not defined** in Sexes.
+- **SP Sexes: 1 = Female, 2 = Male, 3 = Unknown. NEISS uses the opposite (1 = Male,
+  2 = Female).**
+
+**Values:**
+- All dates are midnight UTC. `IncidentDate` is null in 39 rows.
+- `VictimAgeInMonths = 0` in 26,924 rows (37%), which become NULL. The maximum is
+  1,440 (120 years).
+- Reports per year range from 3,073 (2019) to 6,924 (2012). 2026 has 6,111 through
+  Oct 20.
+
+**Output:** `safer_incidents.parquet` is 23.0 MB. Stored natively in DuckDB, the same
+table measured 97.5 MB.
+
+**Name link to NEISS:**
+- 673 SP category ids map to 634 NEISS codes, including 76 duplicate-name SP ids.
+- **82.7% of incidents get a NEISS code.**
+- The largest unlinked SP categories have no exact NEISS title: "Light Bulbs" (868),
+  "Exercise Equipment" (574), "Bicycles and Accessories, (Excl.mountain or
+  All-terrain)" (563), and "Nonportable Cribs" (469). Fuzzy or manual matching would
+  pick these up.
+
+### Recalls snapshot (`fetch_recalls.py`, `build_recalls.py`)
+**Pull:** 57 yearly requests (1970-2026) at ≤2 req/s. All HTTP 200, with **no error
+pseudo-recalls and no retries**.
+
+**Result:** **10,082 recalls** (1973-2026) with 11,878 recall-product rows; no
+duplicate RecallIDs.
+
+Per-year counts (recalls):
+
+| Years | Counts |
+|---|---|
+| 1973-1980 | 8, 14, 13, 27, 36, 43, 33, 22 |
+| 1981-1990 | 12, 23, 23, 44, 30, 46, 49, 75, 80, 78 |
+| 1991-2000 | 84, 82, 75, 109, 128, 138, 151, 133, 156, 191 |
+| 2001-2010 | 245, 256, 215, 278, 323, 319, 452, 392, 383, 362 |
+| 2011-2020 | 313, 310, 290, 296, 305, 330, 280, 258, 241, 257 |
+| 2021-2026 | 219, 292, 324, 305, 420, 514 |
+
+`data/raw/recalls/snapshot/counts.json` keys these by year.
+
+**`Products[].CategoryID` / `Type` (corrects the earlier "always empty"):**
+- Filled for most products through 2015 and 249/330 in 2016.
+- **Empty for every recall from 2017 to 2025.** 116 of 514 are filled in 2026.
+- Of the 7,151 filled, 5,538 ids exist in SP ProductCategories, and **5,501 have
+  `Type` equal to the SP name**. So they are SP category ids, not NEISS codes.
+- The others are ids not in the lookup, e.g. 4062, 68242.
+
+**Other fields:**
+- `Hazards[].HazardType` / `HazardTypeID` are empty for all 9,953 hazards.
+- 358 product names are empty.
+
+### Crosswalk draft (`build_xwalks.py`)
+**Scope:** the top-50 lists (any slot, weighted, 2019-2025, placeholder and untitled
+codes excluded).
+- Rank 1 is 1807 floors for all ages, under 5, and 65+.
+- The union is **92 codes**.
+
+**Candidates:** 4,398 recall links plus 92 terms-only rows, in
+`build/seeds/product_recall_xwalk.draft.csv` and the seed.
+
+| Confidence | All candidates | Recalls dated 2019+ |
+|---|---|---|
+| high | 2,682 | 811 |
+| medium | 1,333 | 463 |
+| low | 383 | 153 |
+
+- **Audited: 0.**
+- The modifier rule (title word followed by another noun -> medium) removed most
+  false "high" matches, e.g. "Floor Lamps", "Step Stools", "Bed Rails", "Bicycle
+  Helmets".
+- Precision is still unmeasured. Generic titles ("Toys, not specified", "Batteries",
+  "Chairs") produce many candidates.
+
+### Assembled DB (`build_db.py`)
+- `data/processed/injuries.duckdb` is **0.5 MB**: views over Parquet plus a
+  `data_dictionary` table (114 rows).
+- All 18 files in `data/processed/` total **151.2 MB**. The largest is 23 MB.
+- Typical queries take 0.01-0.05 s, e.g. the 2025 under-5 top 10, the 65+ trend for
+  one code, a recall ILIKE search, and a narrative ILIKE search.
+- Views use repo-relative paths. Opening from another directory fails with "No files
+  found", which `SET file_search_path = '<repo root>'` fixes (verified).
+- **The DuckDB `fts` extension is not installed locally.** Installing it needs a
+  download that was not pre-approved, so there is no BM25 index; search uses ILIKE.
+- **Sanity checks pass:**
+  - 2025 weight total 16,485,413.
+  - Under 5: 1,469,070 (vs 856,149 with the naive filter).
+  - All 7 years present.
+  - 2025 rank 1 is 1807.
+  - `'all'` rows equal the sum of the age-group rows.
+  - 0 audited links.
+
+---
+
 ## Unverified / open
 
-- NEISS product-code titles for **pre-2025 codes** that have since been retired or
-  renumbered. These need the comparability tables, which haven't been downloaded.
+- Titles for the 7 retired codes (1329, 1543, 1545, 1710, 1903, 3215, 5042), and the
+  definitional stability of all codes across 2019-2025. Both need the 2024/2025
+  comparability tables, which are **not in `docs/`**.
+- Recall crosswalk precision: 0 of 4,398 candidates audited.
+- Whether the DuckDB `fts` extension can be installed in the Cloud Run image.
 - Which product codes are outside CPSC jurisdiction (underlined in the manual; lost in
   text extraction).
-- Column names in years other than 2025, especially pre-2019, including whether the
-  narrative is `Narrative_1` + `Narrative_2`.
+- Column names before 2019, including whether the narrative is `Narrative_1` +
+  `Narrative_2`. 2019-2025 is verified identical.
 - Direct download URL pattern for the NEISS annual files (needed for a scripted fetch).
 - NEISS reuse/license terms, both CPSC and DataLumos.
 - NEISS minimum-sample or CV rules for stable estimates.
@@ -470,7 +654,8 @@ loading 2019-2024.
   - behavior when the 100 req/s limit is exceeded (429 or otherwise);
   - SP recall sets: `RecallDetails` returned 503 "Page Unavailable" twice. Whether they
     work at all, and which id scheme they use, is unknown;
-  - the meaning of `LocaleId = -1`.
+  - ~~the meaning of `LocaleId = -1`~~ resolved: "Unspecified", per the Locales
+    lookup.
 - Whether `RecallDateStart`/`RecallDateEnd` are inclusive, and the behavior of misspelled
   parameters. A third-party blog claims misspelled names return the full dataset. Not tested.
 - The exact HTTP status code of the error pseudo-recall response.
