@@ -16,3 +16,30 @@ saferproducts:
   # Gentle rate probe: well under the documented 100 req/s per key.
   rate_probe_requests: 20
   rate_probe_delay_s: 0.0
+
+recalls:
+  base_url: "https://www.saferproducts.gov/RestWebServices/Recall"
+  out_dir: "data/raw/recalls"
+  timeout_s: 120
+
+join_probe:
+  out_dir: "data/raw/saferproducts/join_probe"
+  delay_s: 0.5                 # ~2 req/s, well under the 10 req/s self-limit
+  max_lookup_pages: 10
+  lookup_page_size: 1000
+  sample_top: 20
+  incident_filter_code: 1807   # one ProductCategoryId to sample incidents for
+  # Recalls API windows used to compare CategoryID with SaferProducts recall sets
+  recall_windows:
+    - ["2024-10-01", "2024-10-31"]
+    - ["2025-01-01", "2025-03-31"]
+  neiss_tsv: "data/raw/neiss/neiss2025.tsv"
+
+product_codes:
+  manual_pdf: "docs/JANUARY-2025-NEISS-CPSC-only-Coding-Manual-Rev-1.pdf"
+  manual_label: "NEISS Coding Manual, January 2025 (rev.1), Appendix H"
+  page_header: "Code Product Title"      # marks Appendix H listing pages
+  out_parquet: "data/build/product_codes.parquet"
+  # NEISS files used only for the coverage check
+  coverage_tsvs:
+    - "data/raw/neiss/neiss2025.tsv"

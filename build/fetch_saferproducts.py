@@ -94,15 +94,14 @@ def basic_auth_header(key: str) -> str:
 
 
 def get(url: str, auth: str, accept: str, timeout_s: float) -> Response:
-    """GET a URL. Return status, headers, and body even for HTTP error codes."""
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Authorization": auth,
-            "Accept": accept,
-            "User-Agent": "product-injury-detective/0.1",
-        },
-    )
+    """GET a URL. Return status, headers, and body even for HTTP error codes.
+
+    Pass auth="" to send no Authorization header (public endpoints).
+    """
+    headers = {"Accept": accept, "User-Agent": "product-injury-detective/0.1"}
+    if auth:
+        headers["Authorization"] = auth
+    req = urllib.request.Request(url, headers=headers)
     start = time.perf_counter()
     try:
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
