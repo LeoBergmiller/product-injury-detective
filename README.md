@@ -64,22 +64,26 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
 
 ## Data: where it came from and how to rebuild it
 
-| Source | What | How we got it | Table(s) |
-|---|---|---|---|
-| **NEISS** (CPSC National Electronic Injury Surveillance System) | ER cases 2019-2025, a probability sample of ~100 hospitals with a national weight per case. 2,442,005 cases | Yearly TSVs from cpsc.gov/Research--Statistics/NEISS-Injury-Data, plus the data dictionary and the January 2025 coding manual | `neiss_cases` (one Parquet per year), `neiss_case_products`, `neiss_codebook`, `product_codes`, `product_code_stability` |
-| **CPSC Recalls API** | 10,082 recalls, 1973-06-08 to 2026-11-05 | `saferproducts.gov/RestWebServices/Recall`, one request per year (no key) | `recalls`, `recall_products` |
-| **SaferProducts.gov** (OData API) | 71,858 voluntary incident reports, 2011-03 to 2026-10 | Full paged pull with an application key (key only in `.env`, never committed) | `safer_incidents`, `safer_codebook`, `safer_category_xwalk` |
+| Source | Owner | What | How we got it | Table(s) |
+|---|---|---|---|---|
+| **NEISS** (CPSC National Electronic Injury Surveillance System) | lab2309 | ER cases 2019-2025, a probability sample of ~100 hospitals with a national weight per case. 2,442,005 cases | Yearly TSVs from cpsc.gov/Research--Statistics/NEISS-Injury-Data, plus the data dictionary and the January 2025 coding manual | `neiss_cases` (one Parquet per year), `neiss_case_products`, `neiss_codebook`, `product_codes`, `product_code_stability` |
+| **CPSC Recalls API** | rl3575 | 10,082 recalls, 1973-06-08 to 2026-11-05 | `saferproducts.gov/RestWebServices/Recall`, one request per year (no key) | `recalls`, `recall_products` |
+| **SaferProducts.gov** (OData API) | avr2141 | 71,858 voluntary incident reports, 2011-03 to 2026-10 | Full paged pull with an application key (key only in `.env`, never committed) | `safer_incidents`, `safer_codebook`, `safer_category_xwalk` |
 
 - **Reuse terms.** None of the CPSC pages we checked states a license; see
   [`docs/DATA_NOTES.md`](docs/DATA_NOTES.md). Recall-to-product links come from text
   matching and are not reviewed (`product_recall_xwalk.audited = false`).
 - **Repaired records.** Six NEISS records were split by stray line breaks inside the
-  narrative. They were repaired with each fix logged in `neiss_repairs.json`, and are
-  documented in `docs/DATA_NOTES.md`:
-  - 2019: case 190746091 (CR LF inside the narrative, joined with a space).
-  - 2021: cases 210332827 and 210760065 (same fix).
-  - 2023: case 230975940 (same fix), and cases 240131872 and 240152467 (lone LF
-    replaced by a space).
+  narrative. They are documented in `docs/DATA_NOTES.md`, and `build/build_neiss.py`
+  logs each fix to `data/processed/tmp/neiss_repairs.json` on every build. That
+  folder is gitignored, so the log is not committed. The list below was re-checked
+  against the raw files on 2026-11-08:
+  - `neiss2019.tsv`: case 190746091 (CR LF inside the narrative, joined with a
+    space).
+  - `neiss2021.tsv`: cases 210332827 and 210760065 (same fix).
+  - `neiss2023.tsv`: case 230975940 (same fix), and cases 240131872 and 240152467
+    (lone LF replaced by a space). These two have 24- case numbers but are in the
+    2023 file, with treatment dates 2023-12-19 and 2023-12-31.
   - 2020, 2022, 2024, and 2025 needed no repair.
   - After repair, every validation passes: unique case ids, valid dates and ages,
     weights > 0, and every code in the codebook.
@@ -130,7 +134,8 @@ same model (`gemini-3.5-flash-lite`) with no tools and no system prompt
   - Source: `neiss_cases` with `year = 2025 AND age_years < 5`.
   - NEISS codes infants as `201`-`223` (months), so the raw filter `Age < 5` gives
     only 856,149.
-- **Agent** (final test run, `tests/results/questions_detective.json`):
+- **Agent** (final test run,
+  [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json)):
   > There were an estimated 1,469,070 injury-related ER visits (from a sample of
   > 57,638 cases) for children under 5 in 2025.
 - **No tools, no system prompt:**
@@ -307,7 +312,7 @@ The agent says so in its first sentence, then offers what the data can show:
 - **Keyword searches of the case narratives are approximate.**
 - **The model's answers vary between runs** (see the observed rates above).
   - The last live run passed **13/13** checks (`tests/test_questions.py`,
-    [`tests/results/questions_detective.json`](tests/results/questions_detective.json)).
+    [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json)).
     Earlier runs on earlier code scored 7/12, 11/12, 12/12, 8/13, 9/13, and 11/13.
   - The checks themselves are partly lenient regexes.
 - **The grounding check tests that numbers exist, not that they're attributed

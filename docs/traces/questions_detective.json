@@ -1,0 +1,1702 @@
+[
+ {
+  "id": "sample_under5",
+  "kind": "sample",
+  "question": "How many ER visits were there for children under 5 in 2025?",
+  "expect": "1,469,070 estimated visits (57,638 cases)",
+  "pass": true,
+  "fails": [],
+  "response": "There were an estimated 1,469,070 injury-related ER visits (from a sample of 57,638 cases) for children under 5 in 2025.\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_years < 5"
+    },
+    "result": "{\"columns\": [\"n_cases\", \"est_visits\"], \"rows\": [[57638, 1469070.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT age_group, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_group IN ('0-4', '5-14', '15-24', '25-44', '45-64', '65+') GROUP BY age_group ORDER BY age_group"
+    },
+    "result": "{\"columns\": [\"age_group\", \"n_cases\", \"est_visits\"], \"rows\": [[\"0-4\", 57638, 1469070.0], [\"15-24\", 51117, 2064131.0], [\"25-44\", 62219, 2943375.0], [\"45-64\", 59533, 2871821.0], [\"5-14\", 81375, 2297600.0], [\"65+\", 98274, 4837571.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "age_group",
+    "n_cases",
+    "est_visits"
+   ],
+   "rows": [
+    [
+     "0-4",
+     57638,
+     1469070.0
+    ],
+    [
+     "15-24",
+     51117,
+     2064131.0
+    ],
+    [
+     "25-44",
+     62219,
+     2943375.0
+    ],
+    [
+     "45-64",
+     59533,
+     2871821.0
+    ],
+    [
+     "5-14",
+     81375,
+     2297600.0
+    ],
+    [
+     "65+",
+     98274,
+     4837571.0
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT age_group, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_group IN ('0-4', '5-14', '15-24', '25-44', '45-64', '65+') GROUP BY age_group ORDER BY age_group"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "age_group",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": "0-4",
+     "y": 1469070.0,
+     "series": null
+    },
+    {
+     "x": "15-24",
+     "y": 2064131.0,
+     "series": null
+    },
+    {
+     "x": "25-44",
+     "y": 2943375.0,
+     "series": null
+    },
+    {
+     "x": "45-64",
+     "y": 2871821.0,
+     "series": null
+    },
+    {
+     "x": "5-14",
+     "y": 2297600.0,
+     "series": null
+    },
+    {
+     "x": "65+",
+     "y": 4837571.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "sample_65plus_recalls",
+  "kind": "sample",
+  "question": "Which products send the most adults 65+ to the ER in 2025, and have any been recalled?",
+  "expect": "Floors 1,768,793; beds 591,562; stairs 423,006; chairs 257,725; bathtubs 163,420. Recalls are possible matches",
+  "pass": true,
+  "fails": [],
+  "response": "In 2025, the everyday products and home structures associated with the highest estimated injury-related ER visits for adults aged 65 and older are floors or flooring materials (about 1.77 million estimated visits from 35,318 sample cases), followed by beds or bedframes (about 592,000 estimated visits from 12,639 sample cases), and stairs or steps (about 423,000 estimated visits from 8,865 sample cases). Other leading categories include chairs (about 258,000 estimated visits), bathtubs or showers (about 163,000 estimated visits), and toilets (about 162,000 estimated visits). \n\nRegarding recalls, text-based searches identified possible matches (not reviewed by a person) for beds or bedframes\u2014such as recalls for Murphy beds, platform beds, and upholstered beds due to crush, fall, and collapse hazards (for example, recall ID 10922, https://www.cpsc.gov/Recalls/2026/GigaCloud-Technology-USA-Recalls-Merax-Murphy-Beds-Due-to-Risk-of-Serious-Injury-or-Death-from-Impact-and-Crush-Hazards). No reviewed recall links were found in the database for floors or stairs. Recalls are provided as context and do not prove that a recalled product caused any specific injury.\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT rank, product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample\nFROM v_top_products\nWHERE year = 2025 AND age_group = '65+' AND rank <= 10\nORDER BY rank;"
+    },
+    "result": "{\"columns\": [\"rank\", \"product_code\", \"product_title\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[1, 1807, \"Floors or flooring materials\", 35318, 1768793.0, false], [2, 4076, \"Beds or bedframes, other or not specified\", 12639, 591562.0, false], [3, 1842, \"Stairs or steps (excluding pull-down and folding stairs)\", 8865, 423006.0, false], [4, 4074, \"Chairs, other or not specified\", 5366, 257725.0, false], [5, 611, \"Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)\", 3422, 163420.0, false], [6, 649, \"Toilets\", 3422, 161700.0, false], [7, 4057, \"Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)\", 2836, 140663.0, false], [8, 1884, \"Ceilings and walls (interior part of completed structure)\", 2568, 123872.0, false], [9, 676, \"Rugs or carpets, not specified\", 2315, 116780.0, false], [10, 1615, \"Footwear\", 2175, 105300.0, false]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "search_recalls",
+    "args": {
+     "since_year": 2019,
+     "keywords": "flooring, floor",
+     "product_code": 1807
+    },
+    "result": "{\"target\": \"NEISS 1807 (Floors or flooring materials)\", \"candidates_checked\": 45, \"excluded_unrelated\": 45, \"recalls\": [], \"more\": 0, \"message\": \"no reviewed recall link found for NEISS 1807 (Floors or flooring materials)\"}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "search_recalls",
+    "args": {
+     "since_year": 2019,
+     "keywords": "bed, bedframe",
+     "product_code": 4076
+    },
+    "result": "{\"target\": \"NEISS 4076 (Beds or bedframes, other or not specified)\", \"candidates_checked\": 149, \"excluded_unrelated\": 138, \"recalls\": [{\"recall_id\": 10922, \"recall_date\": \"2026-08-13\", \"title\": \"GigaCloud Technology USA Recalls Merax Murphy Beds Due to Risk of Serious Injury or Death from Impact and Crush Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2026/GigaCloud-Technology-USA-Recalls-Merax-Murphy-Beds-Due-to-Risk-of-Serious-Injury-or-Death-from-Impact-and-Crush-Hazards\", \"hazards_text\": \"During assembly or disassembly, the frame of the wall bed can fall onto consumers, posing deadly impact, crush and laceration hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10508, \"recall_date\": \"2025-12-04\", \"title\": \"Ningbo Tianqi Electronic Recalls FUFU&GAGA Murphy Wall Beds Due to Impact and Laceration Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Ningbo-Tianqi-Electronic-Recalls-FUFU&GAGA-Murphy-Wall-Beds-Due-to-Impact-and-Laceration-Hazards\", \"hazards_text\": \"During assembly or disassembly, the 215-pound frame of the wall bed can fall onto consumers, posing deadly impact, crush, and laceration hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10097, \"recall_date\": \"2024-11-21\", \"title\": \"Dorel Home Furnishings Recalls Dorel Wall Beds Due to Serious Impact and Crush Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2025/Dorel-Home-Furnishings-Recalls-Dorel-Wall-Beds-Due-to-Serious-Impact-and-Crush-Hazards\", \"hazards_text\": \"The wall beds can detach from the wall and fall onto those nearby, posing serious impact and crush hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10056, \"recall_date\": \"2024-09-19\", \"title\": \"CVB Recalls LUCID Platform Beds with Upholstered Square Tufted Headboards Due to Fall and Injury Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2024/CVB-Recalls-LUCID-Platform-Beds-with-Upholstered-Square-Tufted-Headboards-Due-to-Fall-and-Injury-Hazards\", \"hazards_text\": \"The recalled beds can sag, break, or collapse during use, posing fall and injury hazards to consumers.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9824, \"recall_date\": \"2024-01-18\", \"title\": \"Home Design Recalls Upholstered Low Profile Standard and Platform Beds Due to Fall and Injury Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2024/Home-Design-Recalls-Upholstered-Low-Profile-Standard-and-Platform-Beds-Due-to-Fall-and-Injury-Hazards\", \"hazards_text\": \"The recalled beds can break, sag or collapse during use, posing fall and injury hazards to consumers.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9786, \"recall_date\": \"2023-12-07\", \"title\": \"Sourceone Ventures Recalls Windsor Queen Xtrabed\\u2122 Due to Injury and Tip Over Hazards; Sold Exclusively at Wayfair\", \"url\": \"https://www.cpsc.gov/Recalls/2024/Sourceone-Ventures-Recalls-Windsor-Queen-Xtrabed-Due-to-Injury-and-Tip-Over-Hazards-Sold-Exclusively-at-Wayfair\", \"hazards_text\": \"The outer case or cabinet on the front, or smaller side, of the Xtrabed can break and fall when opening the bed from the front, posing an injury hazard. Further, the Xtrabed can tip over if not anchored to the wall, posing tip-over and entr\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9690, \"recall_date\": \"2023-08-17\", \"title\": \"Zipadee Kids Recalls Convertible House Bed Frames and Montessori Floor Beds Due to Entrapment and Strangulation Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2023/Zipadee-Kids-Recalls-Convertible-House-Bed-Frames-and-Montessori-Floor-Beds-Due-to-Entrapment-and-Strangulation-Hazards\", \"hazards_text\": \"The spindles used on the recalled beds are spaced at a distance that creates a serious entrapment hazard that can lead to strangulation and/or death to children. The design of the bed allows a child's torso to slip through the rail opening \", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9278, \"recall_date\": \"2022-04-07\", \"title\": \"Bestar Recalls Wall Beds Due to Serious Impact and Crush Hazards; One Adult Death Reported (Recall Alert)\", \"url\": \"https://www.cpsc.gov/Recalls/2022/Bestar-Recalls-Wall-Beds-Due-to-Serious-Impact-and-Crush-Hazards-One-Adult-Death-Reported-Recall-Alert\", \"hazards_text\": \"The wall beds can detach from the wall and fall onto those nearby, posing serious impact and crush hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 8858, \"recall_date\": \"2020-07-15\", \"title\": \"Crate and Barrel Recalls Parke Twin and Full Beds Due to Fall Hazard\", \"url\": \"https://www.cpsc.gov/Recalls/2020/Crate-and-Barrel-Recalls-Parke-Twin-and-Full-Beds-Due-to-Fall-Hazard\", \"hazards_text\": \"The headboard on the recalled beds can separate from the side rails, posing a fall hazard.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 8539, \"recall_date\": \"2019-04-18\", \"title\": \"RH Recalls Callum Canopy Beds Due to Injury Hazard (Recall Alert)\", \"url\": \"https://www.cpsc.gov/Recalls/2019/RH-Recalls-Callum-Canopy-Beds-Due-to-Injury-Hazard-Recall-Alert\", \"hazards_text\": \"The bed's horizontal canopy rails can detach and fall, posing an injury hazard.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}], \"more\": 1}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "search_recalls",
+    "args": {
+     "product_code": 1842,
+     "since_year": 2019,
+     "keywords": "stairs, step"
+    },
+    "result": "{\"target\": \"NEISS 1842 (Stairs or steps (excluding pull-down and folding stairs))\", \"candidates_checked\": 48, \"excluded_unrelated\": 48, \"recalls\": [], \"more\": 0, \"message\": \"no reviewed recall link found for NEISS 1842 (Stairs or steps (excluding pull-down and folding stairs))\"}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "rank",
+    "product_code",
+    "product_title",
+    "n_cases",
+    "est_visits",
+    "low_sample"
+   ],
+   "rows": [
+    [
+     1,
+     1807,
+     "Floors or flooring materials",
+     35318,
+     1768793.0,
+     false
+    ],
+    [
+     2,
+     4076,
+     "Beds or bedframes, other or not specified",
+     12639,
+     591562.0,
+     false
+    ],
+    [
+     3,
+     1842,
+     "Stairs or steps (excluding pull-down and folding stairs)",
+     8865,
+     423006.0,
+     false
+    ],
+    [
+     4,
+     4074,
+     "Chairs, other or not specified",
+     5366,
+     257725.0,
+     false
+    ],
+    [
+     5,
+     611,
+     "Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)",
+     3422,
+     163420.0,
+     false
+    ],
+    [
+     6,
+     649,
+     "Toilets",
+     3422,
+     161700.0,
+     false
+    ],
+    [
+     7,
+     4057,
+     "Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)",
+     2836,
+     140663.0,
+     false
+    ],
+    [
+     8,
+     1884,
+     "Ceilings and walls (interior part of completed structure)",
+     2568,
+     123872.0,
+     false
+    ],
+    [
+     9,
+     676,
+     "Rugs or carpets, not specified",
+     2315,
+     116780.0,
+     false
+    ],
+    [
+     10,
+     1615,
+     "Footwear",
+     2175,
+     105300.0,
+     false
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT rank, product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample\nFROM v_top_products\nWHERE year = 2025 AND age_group = '65+' AND rank <= 10\nORDER BY rank;"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "product_title",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": "Floors or flooring materials",
+     "y": 1768793.0,
+     "series": null
+    },
+    {
+     "x": "Beds or bedframes, other or not specified",
+     "y": 591562.0,
+     "series": null
+    },
+    {
+     "x": "Stairs or steps (excluding pull-down and folding stairs)",
+     "y": 423006.0,
+     "series": null
+    },
+    {
+     "x": "Chairs, other or not specified",
+     "y": 257725.0,
+     "series": null
+    },
+    {
+     "x": "Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)",
+     "y": 163420.0,
+     "series": null
+    },
+    {
+     "x": "Toilets",
+     "y": 161700.0,
+     "series": null
+    },
+    {
+     "x": "Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)",
+     "y": 140663.0,
+     "series": null
+    },
+    {
+     "x": "Ceilings and walls (interior part of completed structure)",
+     "y": 123872.0,
+     "series": null
+    },
+    {
+     "x": "Rugs or carpets, not specified",
+     "y": 116780.0,
+     "series": null
+    },
+    {
+     "x": "Footwear",
+     "y": 105300.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "Recalls shown are possible matches (not reviewed) whose recalled product matches the NEISS product; a recall does not show that a product caused these injury-related ER visits."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "sample_stairs_age",
+  "kind": "sample",
+  "question": "How do injuries on stairs compare for children under 5 and adults 65+ in 2025?",
+  "expect": "Code 1842: 65+ 423,006 (8,865 cases); under 5 81,016 (3,701 cases). With pull-down stairs 1840, each case once: 423,446 / 81,042",
+  "pass": true,
+  "fails": [],
+  "response": "In 2025, for stairs or steps (excluding pull-down and folding stairs, product code 1842), children under 5 accounted for an estimated 81,016 injury-related ER visits (from 3,701 sample cases). Adults aged 65 and older accounted for an estimated 423,006 injury-related ER visits (from 8,865 sample cases). \n\nTop diagnoses for children under 5 included internal organ injury (estimated 29,112 visits), laceration (estimated 15,651 visits), and contusions or abrasions (estimated 11,318 visits). For adults aged 65+, top diagnoses included fracture (estimated 131,404 visits), other/not stated (estimated 87,955 visits), and internal organ injury (estimated 74,505 visits).\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "stairs"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"stairs\", \"matches\": [{\"code\": 1840, \"title\": \"Pull-down or folding stairs\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1842, \"title\": \"Stairs or steps (excluding pull-down and folding stairs)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT age_group, n_cases, ROUND(est_visits) AS est_visits, low_sample FROM v_product_estimates WHERE year = 2025 AND product_code = 1842 AND age_group IN ('0-4', '65+') ORDER BY age_group"
+    },
+    "result": "{\"columns\": [\"age_group\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[\"0-4\", 3701, 81016.0, false], [\"65+\", 8865, 423006.0, false]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT age_group, cb.label AS diagnosis, COUNT(*) AS n_cases, ROUND(SUM(p.weight)) AS est_visits FROM v_case_products p JOIN neiss_codebook cb ON cb.variable = 'diagnosis' AND cb.code = p.diagnosis WHERE p.year = 2025 AND p.product_code = 1842 AND p.age_group IN ('0-4', '65+') GROUP BY age_group, cb.label ORDER BY age_group, est_visits DESC"
+    },
+    "result": "{\"columns\": [\"age_group\", \"diagnosis\", \"n_cases\", \"est_visits\"], \"rows\": [[\"0-4\", \"Internal Organ Injury\", 1439, 29112.0], [\"0-4\", \"Laceration\", 672, 15651.0], [\"0-4\", \"Contusions, Abrasions\", 439, 11318.0], [\"0-4\", \"Other/Not Stated\", 387, 9302.0], [\"0-4\", \"Fracture\", 348, 6947.0], [\"0-4\", \"Hematoma\", 146, 3774.0], [\"0-4\", \"Dental Injury\", 91, 1440.0], [\"0-4\", \"Concussions\", 44, 866.0], [\"0-4\", \"Dislocation\", 48, 837.0], [\"0-4\", \"Hemorrhage\", 32, 740.0], [\"0-4\", \"Strain, Sprain\", 32, 478.0], [\"0-4\", \"Burns, Scald\", 4, 198.0], [\"0-4\", \"Foreign Body\", 4, 123.0], [\"0-4\", \"Avulsion\", 4, 87.0], [\"0-4\", \"Dermatitis, Conjunctivitis\", 2, 78.0], [\"0-4\", \"Puncture\", 3, 21.0], [\"0-4\", \"Submersion\", 3, 21.0], [\"0-4\", \"Burns, Thermal\", 1, 8.0], [\"0-4\", \"Poisoning\", 1, 7.0], [\"0-4\", \"Crushing\", 1, 7.0], [\"65+\", \"Fracture\", 2724, 131404.0], [\"65+\", \"Other/Not Stated\", 1960, 87955.0], [\"65+\", \"Internal Organ Injury\", 1621, 74505.0], [\"65+\", \"Contusions, Abrasions\", 865, 45210.0], [\"65+\", \"Laceration\", 684, 34464.0], [\"65+\", \"Strain, Sprain\", 410, 21303.0], [\"65+\", \"Hematoma\", 248, 10624.0], [\"65+\", \"Avulsion\", 119, 5887.0], [\"65+\", \"Dislocation\", 91, 4519.0], [\"65+\", \"Concussions\", 60, 3251.0], [\"65+\", \"Nerve Damage\", 42, 1850.0], [\"65+\", \"Hemorrhage\", 13, 715.0], [\"65+\", \"Poisoning\", 9, 416.0], [\"65+\", \"Dental Injury\", 9, 336.0], [\"65+\", \"Foreign Body\", 3, 235.0], [\"65+\", \"Crushing\", 1, 105.0], [\"65+\", \"Anoxia\", 1, 52.0], [\"65+\", \"Puncture\", 1, 52.0], [\"65+\", \"Burns, Not Specified\", 1, 46.0], [\"65+\", \"Burns, Thermal\", 1, 26.0], [\"65+\", \"Burns, Scald\", 1, 26.0], [\"65+\", \"Dermatitis, Conjunctivitis\", 1, 26.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT age_group, n_cases, ROUND(est_visits) AS est_visits FROM (SELECT '0-4' AS age_group, 3701 AS n_cases, 81016 AS est_visits UNION ALL SELECT '65+' AS age_group, 8865 AS n_cases, 423006 AS est_visits)"
+    },
+    "result": "{\"rejected\": \"Rejected: this query reads no table. Numbers must come from the data, so don't type values into SQL; query the table or view that holds them (e.g. v_product_estimates) and return all groups in that one query.\"}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT age_group, n_cases, ROUND(est_visits) AS est_visits FROM v_product_estimates WHERE year = 2025 AND product_code = 1842 AND age_group IN ('0-4', '65+') ORDER BY age_group"
+    },
+    "result": "{\"columns\": [\"age_group\", \"n_cases\", \"est_visits\"], \"rows\": [[\"0-4\", 3701, 81016.0], [\"65+\", 8865, 423006.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "age_group",
+    "n_cases",
+    "est_visits"
+   ],
+   "rows": [
+    [
+     "0-4",
+     3701,
+     81016.0
+    ],
+    [
+     "65+",
+     8865,
+     423006.0
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT age_group, n_cases, ROUND(est_visits) AS est_visits FROM v_product_estimates WHERE year = 2025 AND product_code = 1842 AND age_group IN ('0-4', '65+') ORDER BY age_group"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "age_group",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": "0-4",
+     "y": 81016.0,
+     "series": null
+    },
+    {
+     "x": "65+",
+     "y": 423006.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "Some estimates rest on fewer than 20 sample cases and are unstable (project threshold).",
+   "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "trampoline_body_parts",
+  "kind": "normal",
+  "question": "What body parts are injured most often on trampolines in 2024?",
+  "expect": "Ankle 18,313; knee 12,769; lower leg 12,431; head 10,049",
+  "pass": true,
+  "fails": [],
+  "response": "In 2024, the most frequently injured body parts associated with trampolines (product code 1233) were the ankle (estimated 18,313 injury-related ER visits from 581 sample cases), knee (estimated 12,769 visits from 367 cases), and lower leg (estimated 12,431 visits from 529 cases). \n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "query": "trampoline",
+     "kind": "product"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"trampoline\", \"matches\": [{\"code\": 1233, \"title\": \"Trampolines\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1272, \"title\": \"Gymnastics (activity, apparel or equipment; excluding trampolines)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT cb.label AS body_part, COUNT(*) AS n_cases,\n       ROUND(SUM(p.weight)) AS est_visits\nFROM v_case_products p\nJOIN neiss_codebook cb ON cb.variable = 'body_part' AND cb.code = p.body_part\nWHERE p.year = 2024 AND p.product_code = 1233\nGROUP BY 1 ORDER BY est_visits DESC LIMIT 10"
+    },
+    "result": "{\"columns\": [\"body_part\", \"n_cases\", \"est_visits\"], \"rows\": [[\"Ankle\", 581, 18313.0], [\"Knee\", 367, 12769.0], [\"Lower Leg\", 529, 12431.0], [\"Head\", 339, 10049.0], [\"Elbow\", 247, 7521.0], [\"Lower Arm\", 273, 6843.0], [\"Foot\", 198, 6590.0], [\"Face\", 174, 5982.0], [\"Upper Trunk\", 169, 5318.0], [\"Neck\", 144, 4724.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT cb.label AS body_part, COUNT(*) AS n_cases,\n       ROUND(SUM(p.weight)) AS est_visits\nFROM v_case_products p\nJOIN neiss_codebook cb ON cb.variable = 'body_part' AND cb.code = p.body_part\nWHERE p.year = 2024 AND p.product_code = 1233\nGROUP BY 1 ORDER BY est_visits DESC"
+    },
+    "result": "{\"columns\": [\"body_part\", \"n_cases\", \"est_visits\"], \"rows\": [[\"Ankle\", 581, 18313.0], [\"Knee\", 367, 12769.0], [\"Lower Leg\", 529, 12431.0], [\"Head\", 339, 10049.0], [\"Elbow\", 247, 7521.0], [\"Lower Arm\", 273, 6843.0], [\"Foot\", 198, 6590.0], [\"Face\", 174, 5982.0], [\"Upper Trunk\", 169, 5318.0], [\"Neck\", 144, 4724.0], [\"Lower Trunk\", 127, 4604.0], [\"Wrist\", 118, 4439.0], [\"Shoulder\", 101, 3448.0], [\"Finger\", 93, 2735.0], [\"Upper Arm\", 126, 2727.0], [\"Mouth\", 96, 2560.0], [\"Upper Leg\", 63, 1779.0], [\"Toe\", 43, 1394.0], [\"Hand\", 37, 1309.0], [\"Pubic Region\", 29, 764.0], [\"Eyeball\", 21, 651.0], [\"All Parts Body\", 11, 412.0], [\"Ear\", 13, 401.0], [\"Not Stated/Unk\", 9, 260.0], [\"Internal\", 2, 155.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "body_part",
+    "n_cases",
+    "est_visits"
+   ],
+   "rows": [
+    [
+     "Ankle",
+     581,
+     18313.0
+    ],
+    [
+     "Knee",
+     367,
+     12769.0
+    ],
+    [
+     "Lower Leg",
+     529,
+     12431.0
+    ],
+    [
+     "Head",
+     339,
+     10049.0
+    ],
+    [
+     "Elbow",
+     247,
+     7521.0
+    ],
+    [
+     "Lower Arm",
+     273,
+     6843.0
+    ],
+    [
+     "Foot",
+     198,
+     6590.0
+    ],
+    [
+     "Face",
+     174,
+     5982.0
+    ],
+    [
+     "Upper Trunk",
+     169,
+     5318.0
+    ],
+    [
+     "Neck",
+     144,
+     4724.0
+    ],
+    [
+     "Lower Trunk",
+     127,
+     4604.0
+    ],
+    [
+     "Wrist",
+     118,
+     4439.0
+    ],
+    [
+     "Shoulder",
+     101,
+     3448.0
+    ],
+    [
+     "Finger",
+     93,
+     2735.0
+    ],
+    [
+     "Upper Arm",
+     126,
+     2727.0
+    ],
+    [
+     "Mouth",
+     96,
+     2560.0
+    ],
+    [
+     "Upper Leg",
+     63,
+     1779.0
+    ],
+    [
+     "Toe",
+     43,
+     1394.0
+    ],
+    [
+     "Hand",
+     37,
+     1309.0
+    ],
+    [
+     "Pubic Region",
+     29,
+     764.0
+    ],
+    [
+     "Eyeball",
+     21,
+     651.0
+    ],
+    [
+     "All Parts Body",
+     11,
+     412.0
+    ],
+    [
+     "Ear",
+     13,
+     401.0
+    ],
+    [
+     "Not Stated/Unk",
+     9,
+     260.0
+    ],
+    [
+     "Internal",
+     2,
+     155.0
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT cb.label AS body_part, COUNT(*) AS n_cases,\n       ROUND(SUM(p.weight)) AS est_visits\nFROM v_case_products p\nJOIN neiss_codebook cb ON cb.variable = 'body_part' AND cb.code = p.body_part\nWHERE p.year = 2024 AND p.product_code = 1233\nGROUP BY 1 ORDER BY est_visits DESC"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "body_part",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": "Ankle",
+     "y": 18313.0,
+     "series": null
+    },
+    {
+     "x": "Knee",
+     "y": 12769.0,
+     "series": null
+    },
+    {
+     "x": "Lower Leg",
+     "y": 12431.0,
+     "series": null
+    },
+    {
+     "x": "Head",
+     "y": 10049.0,
+     "series": null
+    },
+    {
+     "x": "Elbow",
+     "y": 7521.0,
+     "series": null
+    },
+    {
+     "x": "Lower Arm",
+     "y": 6843.0,
+     "series": null
+    },
+    {
+     "x": "Foot",
+     "y": 6590.0,
+     "series": null
+    },
+    {
+     "x": "Face",
+     "y": 5982.0,
+     "series": null
+    },
+    {
+     "x": "Upper Trunk",
+     "y": 5318.0,
+     "series": null
+    },
+    {
+     "x": "Neck",
+     "y": 4724.0,
+     "series": null
+    },
+    {
+     "x": "Lower Trunk",
+     "y": 4604.0,
+     "series": null
+    },
+    {
+     "x": "Wrist",
+     "y": 4439.0,
+     "series": null
+    },
+    {
+     "x": "Shoulder",
+     "y": 3448.0,
+     "series": null
+    },
+    {
+     "x": "Finger",
+     "y": 2735.0,
+     "series": null
+    },
+    {
+     "x": "Upper Arm",
+     "y": 2727.0,
+     "series": null
+    },
+    {
+     "x": "Mouth",
+     "y": 2560.0,
+     "series": null
+    },
+    {
+     "x": "Upper Leg",
+     "y": 1779.0,
+     "series": null
+    },
+    {
+     "x": "Toe",
+     "y": 1394.0,
+     "series": null
+    },
+    {
+     "x": "Hand",
+     "y": 1309.0,
+     "series": null
+    },
+    {
+     "x": "Pubic Region",
+     "y": 764.0,
+     "series": null
+    },
+    {
+     "x": "Eyeball",
+     "y": 651.0,
+     "series": null
+    },
+    {
+     "x": "All Parts Body",
+     "y": 412.0,
+     "series": null
+    },
+    {
+     "x": "Ear",
+     "y": 401.0,
+     "series": null
+    },
+    {
+     "x": "Not Stated/Unk",
+     "y": 260.0,
+     "series": null
+    },
+    {
+     "x": "Internal",
+     "y": 155.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "Some estimates rest on fewer than 20 sample cases and are unstable (project threshold)."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "bunk_bed_recalls",
+  "kind": "normal",
+  "question": "Have there been recalls of bunk beds since 2020? Give me links.",
+  "expect": "8 keyword matches since 2020, e.g. Interior Resources steel bunk beds (2025-03-27)",
+  "pass": true,
+  "fails": [],
+  "response": "Yes, there have been multiple CPSC recalls of bunk beds since 2020. Based on text matching for bunk beds, here are 8 possible matches (not reviewed):\n\n1. [Interior Resources Children's Steel Utility Bunk Beds (March 27, 2025)](https://www.cpsc.gov/Recalls/2025/Interior-Resources-Recalls-Childrens-Steel-Utility-Bunk-Beds-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-Hazards-Violations-of-Federal-Regulations-for-Bunk-Bed-Recall-Alert)\n2. [Room & Board Griffin Duo Bunk Beds (December 14, 2023)](https://www.cpsc.gov/Recalls/2024/Room-Board-Recalls-Griffin-Duo-Bunk-Beds-Due-to-Risk-of-Collapse-Fall-and-Injury-Hazards-Sold-Exclusively-at-Room-Board)\n3. [Walker Edison Furniture Twin Over Twin Bunk Beds (May 4, 2023)](https://www.cpsc.gov/Recalls/2023/Walker-Edison-Furniture-Recalls-Twin-Over-Twin-Bunk-Beds-Due-to-Fall-and-Impact-Hazards)\n4. [Hillsdale Furniture Flynn Twin Full Bunk Beds (September 29, 2022)](https://www.cpsc.gov/Recalls/2022/Hillsdale-Furniture-Recalls-Flynn-Twin-Full-Bunk-Beds-With-Ladder-Due-to-Entrapment-Hazard-Sold-Only-at-Value-City-Furniture-and-American-Signature-Furniture-Stores-Recall-Alert)\n5. [Canyon Furniture Company Ladders Sold With Bunk Bed and Hutch Sets (September 22, 2022)](https://www.cpsc.gov/Recalls/2022/Canyon-Furniture-Company-Recalls-Ladders-Sold-With-Bunk-Bed-and-Hutch-Sets-Due-to-Entrapment-and-Strangulation-Hazards-Sold-Exclusively-at-Rooms-To-Go-Recall-Alert)\n6. [Longwood Forest Angel Line Bunk Beds (December 22, 2021)](https://www.cpsc.gov/Recalls/2022/Longwood-Forest-Recalls-Angel-Line-Bunk-Beds-with-Angled-Ladders-Due-to-Serious-Entrapment-and-Strangulation-Hazards-2-Year-Old-Childs-Death-Reported)\n7. [Casa Kids Cabina Bunk Beds (March 4, 2021)](https://www.cpsc.gov/Recalls/2021/Casa-Kids-Recalls-for-Repair-Cabina-Bunk-Beds-Due-to-Fall-Hazard-Recall-Alert)\n8. [Zinus Bunk Beds (November 12, 2020)](https://www.cpsc.gov/Recalls/2021/Zinus-Recalls-Bunk-Beds-Due-Fall-and-Injury-Hazards-Recall-Alert)",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "bunk bed"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"bunk bed\", \"matches\": [{\"code\": 661, \"title\": \"Bunk beds\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "search_recalls",
+    "args": {
+     "keywords": "bunk bed, loft bed",
+     "since_year": 2020,
+     "product_code": 661
+    },
+    "result": "{\"target\": \"NEISS 661 (Bunk beds)\", \"candidates_checked\": 137, \"excluded_unrelated\": 121, \"recalls\": [{\"recall_id\": 10922, \"recall_date\": \"2026-08-13\", \"title\": \"GigaCloud Technology USA Recalls Merax Murphy Beds Due to Risk of Serious Injury or Death from Impact and Crush Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2026/GigaCloud-Technology-USA-Recalls-Merax-Murphy-Beds-Due-to-Risk-of-Serious-Injury-or-Death-from-Impact-and-Crush-Hazards\", \"hazards_text\": \"During assembly or disassembly, the frame of the wall bed can fall onto consumers, posing deadly impact, crush and laceration hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10508, \"recall_date\": \"2025-12-04\", \"title\": \"Ningbo Tianqi Electronic Recalls FUFU&GAGA Murphy Wall Beds Due to Impact and Laceration Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Ningbo-Tianqi-Electronic-Recalls-FUFU&GAGA-Murphy-Wall-Beds-Due-to-Impact-and-Laceration-Hazards\", \"hazards_text\": \"During assembly or disassembly, the 215-pound frame of the wall bed can fall onto consumers, posing deadly impact, crush, and laceration hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10219, \"recall_date\": \"2025-03-27\", \"title\": \"Interior Resources Recalls Children's Steel Utility Bunk Beds Due to Risk of Serious Injury or Death from Entrapment Hazards; Violations of Federal Regulations for Bunk Beds (Recall Alert)\", \"url\": \"https://www.cpsc.gov/Recalls/2025/Interior-Resources-Recalls-Childrens-Steel-Utility-Bunk-Beds-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-Hazards-Violations-of-Federal-Regulations-for-Bunk-Bed-Recall-Alert\", \"hazards_text\": \"The recalled children's bunk beds violate the federal regulations for bunk beds because the spacing between the guardrail and end support and the spacing around the mattress supports are greater than allowed, posing entrapment and strangula\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10097, \"recall_date\": \"2024-11-21\", \"title\": \"Dorel Home Furnishings Recalls Dorel Wall Beds Due to Serious Impact and Crush Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2025/Dorel-Home-Furnishings-Recalls-Dorel-Wall-Beds-Due-to-Serious-Impact-and-Crush-Hazards\", \"hazards_text\": \"The wall beds can detach from the wall and fall onto those nearby, posing serious impact and crush hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10056, \"recall_date\": \"2024-09-19\", \"title\": \"CVB Recalls LUCID Platform Beds with Upholstered Square Tufted Headboards Due to Fall and Injury Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2024/CVB-Recalls-LUCID-Platform-Beds-with-Upholstered-Square-Tufted-Headboards-Due-to-Fall-and-Injury-Hazards\", \"hazards_text\": \"The recalled beds can sag, break, or collapse during use, posing fall and injury hazards to consumers.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9824, \"recall_date\": \"2024-01-18\", \"title\": \"Home Design Recalls Upholstered Low Profile Standard and Platform Beds Due to Fall and Injury Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2024/Home-Design-Recalls-Upholstered-Low-Profile-Standard-and-Platform-Beds-Due-to-Fall-and-Injury-Hazards\", \"hazards_text\": \"The recalled beds can break, sag or collapse during use, posing fall and injury hazards to consumers.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9800, \"recall_date\": \"2023-12-14\", \"title\": \"Room & Board Recalls Griffin Duo Bunk Beds Due to Risk of Collapse, Fall and Injury Hazards; Sold Exclusively at Room & Board\", \"url\": \"https://www.cpsc.gov/Recalls/2024/Room-Board-Recalls-Griffin-Duo-Bunk-Beds-Due-to-Risk-of-Collapse-Fall-and-Injury-Hazards-Sold-Exclusively-at-Room-Board\", \"hazards_text\": \"Some Griffin Duo Bunk Beds failed to be properly assembled by Room & Board with set screws installed into the side rail brackets at the time of delivery. Brackets lacking set screws can create a collapse risk, and fall and injury hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9786, \"recall_date\": \"2023-12-07\", \"title\": \"Sourceone Ventures Recalls Windsor Queen Xtrabed\\u2122 Due to Injury and Tip Over Hazards; Sold Exclusively at Wayfair\", \"url\": \"https://www.cpsc.gov/Recalls/2024/Sourceone-Ventures-Recalls-Windsor-Queen-Xtrabed-Due-to-Injury-and-Tip-Over-Hazards-Sold-Exclusively-at-Wayfair\", \"hazards_text\": \"The outer case or cabinet on the front, or smaller side, of the Xtrabed can break and fall when opening the bed from the front, posing an injury hazard. Further, the Xtrabed can tip over if not anchored to the wall, posing tip-over and entr\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9690, \"recall_date\": \"2023-08-17\", \"title\": \"Zipadee Kids Recalls Convertible House Bed Frames and Montessori Floor Beds Due to Entrapment and Strangulation Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2023/Zipadee-Kids-Recalls-Convertible-House-Bed-Frames-and-Montessori-Floor-Beds-Due-to-Entrapment-and-Strangulation-Hazards\", \"hazards_text\": \"The spindles used on the recalled beds are spaced at a distance that creates a serious entrapment hazard that can lead to strangulation and/or death to children. The design of the bed allows a child's torso to slip through the rail opening \", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 9611, \"recall_date\": \"2023-05-04\", \"title\": \"Walker Edison Furniture Recalls Twin Over Twin Bunk Beds Due to Fall and Impact Hazards\", \"url\": \"https://www.cpsc.gov/Recalls/2023/Walker-Edison-Furniture-Recalls-Twin-Over-Twin-Bunk-Beds-Due-to-Fall-and-Impact-Hazards\", \"hazards_text\": \"The wooden slats supporting the bunk beds can break while in use, posing fall and impact hazards.\", \"why\": \"recalled product is a 'bed'\", \"link_status\": \"possible match (not reviewed)\"}], \"more\": 6}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT recall_id, recall_date, title, url FROM recalls WHERE recall_date >= '2020-01-01' AND (title ILIKE '%bunk bed%' OR hazards_text ILIKE '%bunk bed%') ORDER BY recall_date DESC"
+    },
+    "result": "{\"columns\": [\"recall_id\", \"recall_date\", \"title\", \"url\"], \"rows\": [[10219, \"2025-03-27\", \"Interior Resources Recalls Children's Steel Utility Bunk Beds Due to Risk of Serious Injury or Death from Entrapment Hazards; Violations of Federal Regulations for Bunk Beds (Recall Alert)\", \"https://www.cpsc.gov/Recalls/2025/Interior-Resources-Recalls-Childrens-Steel-Utility-Bunk-Beds-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-Hazards-Violations-of-Federal-Regulations-for-Bunk-Bed-Recall-Alert\"], [9800, \"2023-12-14\", \"Room & Board Recalls Griffin Duo Bunk Beds Due to Risk of Collapse, Fall and Injury Hazards; Sold Exclusively at Room & Board\", \"https://www.cpsc.gov/Recalls/2024/Room-Board-Recalls-Griffin-Duo-Bunk-Beds-Due-to-Risk-of-Collapse-Fall-and-Injury-Hazards-Sold-Exclusively-at-Room-Board\"], [9611, \"2023-05-04\", \"Walker Edison Furniture Recalls Twin Over Twin Bunk Beds Due to Fall and Impact Hazards\", \"https://www.cpsc.gov/Recalls/2023/Walker-Edison-Furniture-Recalls-Twin-Over-Twin-Bunk-Beds-Due-to-Fall-and-Impact-Hazards\"], [9409, \"2022-09-29\", \"Hillsdale Furniture Recalls Flynn Twin Full Bunk Beds With Ladder Due to Entrapment Hazard; Sold Only at Value City Furniture and American Signature Furniture Stores (Recall Alert)\", \"https://www.cpsc.gov/Recalls/2022/Hillsdale-Furniture-Recalls-Flynn-Twin-Full-Bunk-Beds-With-Ladder-Due-to-Entrapment-Hazard-Sold-Only-at-Value-City-Furniture-and-American-Signature-Furniture-Stores-Recall-Alert\"], [9402, \"2022-09-22\", \"Canyon Furniture Company Recalls Ladders Sold With Bunk Bed and Hutch Sets Due to Entrapment and Strangulation Hazards; Sold Exclusively at Rooms To Go (Recall Alert)\", \"https://www.cpsc.gov/Recalls/2022/Canyon-Furniture-Company-Recalls-Ladders-Sold-With-Bunk-Bed-and-Hutch-Sets-Due-to-Entrapment-and-Strangulation-Hazards-Sold-Exclusively-at-Rooms-To-Go-Recall-Alert\"], [9192, \"2021-12-22\", \"Longwood Forest Recalls Angel Line Bunk Beds with Angled Ladders Due to Serious Entrapment and Strangulation Hazards; 2-Year-Old Child's Death Reported\", \"https://www.cpsc.gov/Recalls/2022/Longwood-Forest-Recalls-Angel-Line-Bunk-Beds-with-Angled-Ladders-Due-to-Serious-Entrapment-and-Strangulation-Hazards-2-Year-Old-Childs-Death-Reported\"], [9012, \"2021-03-04\", \"Casa Kids Recalls for Repair Cabina Bunk Beds Due to Fall Hazard (Recall Alert)\", \"https://www.cpsc.gov/Recalls/2021/Casa-Kids-Recalls-for-Repair-Cabina-Bunk-Beds-Due-to-Fall-Hazard-Recall-Alert\"], [8942, \"2020-11-12\", \"Zinus Recalls Bunk Beds Due Fall and Injury Hazards (Recall Alert)\", \"https://www.cpsc.gov/Recalls/2021/Zinus-Recalls-Bunk-Beds-Due-Fall-and-Injury-Hazards-Recall-Alert\"]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "recall_id",
+    "recall_date",
+    "title",
+    "url"
+   ],
+   "rows": [
+    [
+     10219,
+     "2025-03-27",
+     "Interior Resources Recalls Children's Steel Utility Bunk Beds Due to Risk of Serious Injury or Death from Entrapment Hazards; Violations of Federal Regulations for Bunk Beds (Recall Alert)",
+     "https://www.cpsc.gov/Recalls/2025/Interior-Resources-Recalls-Childrens-Steel-Utility-Bunk-Beds-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-Hazards-Violations-of-Federal-Regulations-for-Bunk-Bed-Recall-Alert"
+    ],
+    [
+     9800,
+     "2023-12-14",
+     "Room & Board Recalls Griffin Duo Bunk Beds Due to Risk of Collapse, Fall and Injury Hazards; Sold Exclusively at Room & Board",
+     "https://www.cpsc.gov/Recalls/2024/Room-Board-Recalls-Griffin-Duo-Bunk-Beds-Due-to-Risk-of-Collapse-Fall-and-Injury-Hazards-Sold-Exclusively-at-Room-Board"
+    ],
+    [
+     9611,
+     "2023-05-04",
+     "Walker Edison Furniture Recalls Twin Over Twin Bunk Beds Due to Fall and Impact Hazards",
+     "https://www.cpsc.gov/Recalls/2023/Walker-Edison-Furniture-Recalls-Twin-Over-Twin-Bunk-Beds-Due-to-Fall-and-Impact-Hazards"
+    ],
+    [
+     9409,
+     "2022-09-29",
+     "Hillsdale Furniture Recalls Flynn Twin Full Bunk Beds With Ladder Due to Entrapment Hazard; Sold Only at Value City Furniture and American Signature Furniture Stores (Recall Alert)",
+     "https://www.cpsc.gov/Recalls/2022/Hillsdale-Furniture-Recalls-Flynn-Twin-Full-Bunk-Beds-With-Ladder-Due-to-Entrapment-Hazard-Sold-Only-at-Value-City-Furniture-and-American-Signature-Furniture-Stores-Recall-Alert"
+    ],
+    [
+     9402,
+     "2022-09-22",
+     "Canyon Furniture Company Recalls Ladders Sold With Bunk Bed and Hutch Sets Due to Entrapment and Strangulation Hazards; Sold Exclusively at Rooms To Go (Recall Alert)",
+     "https://www.cpsc.gov/Recalls/2022/Canyon-Furniture-Company-Recalls-Ladders-Sold-With-Bunk-Bed-and-Hutch-Sets-Due-to-Entrapment-and-Strangulation-Hazards-Sold-Exclusively-at-Rooms-To-Go-Recall-Alert"
+    ],
+    [
+     9192,
+     "2021-12-22",
+     "Longwood Forest Recalls Angel Line Bunk Beds with Angled Ladders Due to Serious Entrapment and Strangulation Hazards; 2-Year-Old Child's Death Reported",
+     "https://www.cpsc.gov/Recalls/2022/Longwood-Forest-Recalls-Angel-Line-Bunk-Beds-with-Angled-Ladders-Due-to-Serious-Entrapment-and-Strangulation-Hazards-2-Year-Old-Childs-Death-Reported"
+    ],
+    [
+     9012,
+     "2021-03-04",
+     "Casa Kids Recalls for Repair Cabina Bunk Beds Due to Fall Hazard (Recall Alert)",
+     "https://www.cpsc.gov/Recalls/2021/Casa-Kids-Recalls-for-Repair-Cabina-Bunk-Beds-Due-to-Fall-Hazard-Recall-Alert"
+    ],
+    [
+     8942,
+     "2020-11-12",
+     "Zinus Recalls Bunk Beds Due Fall and Injury Hazards (Recall Alert)",
+     "https://www.cpsc.gov/Recalls/2021/Zinus-Recalls-Bunk-Beds-Due-Fall-and-Injury-Hazards-Recall-Alert"
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT recall_id, recall_date, title, url FROM recalls WHERE recall_date >= '2020-01-01' AND (title ILIKE '%bunk bed%' OR hazards_text ILIKE '%bunk bed%') ORDER BY recall_date DESC"
+  },
+  "chart": null,
+  "caveats": [
+   "Recalls shown are possible matches (not reviewed) whose recalled product matches the NEISS product; a recall does not show that a product caused these injury-related ER visits."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "bicycle_by_year",
+  "kind": "normal",
+  "question": "How have ER visits involving bicycles changed from 2019 to 2025?",
+  "expect": "Code 5040: 408,353 (2019) -> 420,962 (2025). Codes 5033+5040, each case once: 417,673 -> 439,536. Must mention code comparability",
+  "pass": true,
+  "fails": [],
+  "response": "From 2019 to 2025, estimated injury-related ER visits involving bicycles (combining codes 5033 and 5040, which are present across all years) fluctuated, starting at about 417,673 visits (11,484 sample cases) in 2019, peaking at about 454,008 visits (10,920 sample cases) in 2024, and standing at about 439,536 visits (10,985 sample cases) in 2025. \n\nProduct-code comparability across years has not been checked, and a change is not proof of a real trend. \n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "bicycle"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"bicycle\", \"matches\": [{\"code\": 1398, \"title\": \"Wheeled riding toys, unpowered (excluding bicycles and tricycles)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1531, \"title\": \"Baby carriers (bicycle-mounted)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 5005, \"title\": \"Riding toys (excluding bicycles and tricycles), not specified\", \"is_placeholder\": false, \"is_catch_all\": true, \"years_present\": 7}, {\"code\": 5033, \"title\": \"Mountain or all-terrain bicycles or accessories\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 5040, \"title\": \"Bicycles or accessories (excluding mountain or all-terrain bicycles)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 5045, \"title\": \"Electric power-assisted pedal bicycles (excl. off-road vehicles and minibikes)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 2}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT year, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE (product_1 IN (5033, 5040) OR product_2 IN (5033, 5040) OR product_3 IN (5033, 5040)) AND year BETWEEN 2019 AND 2025 GROUP BY year ORDER BY year"
+    },
+    "result": "{\"columns\": [\"year\", \"n_cases\", \"est_visits\"], \"rows\": [[2019, 11484, 417673.0], [2020, 12977, 426109.0], [2021, 11137, 375968.0], [2022, 10174, 405545.0], [2023, 10716, 405923.0], [2024, 10920, 454008.0], [2025, 10985, 439536.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "year",
+    "n_cases",
+    "est_visits"
+   ],
+   "rows": [
+    [
+     2019,
+     11484,
+     417673.0
+    ],
+    [
+     2020,
+     12977,
+     426109.0
+    ],
+    [
+     2021,
+     11137,
+     375968.0
+    ],
+    [
+     2022,
+     10174,
+     405545.0
+    ],
+    [
+     2023,
+     10716,
+     405923.0
+    ],
+    [
+     2024,
+     10920,
+     454008.0
+    ],
+    [
+     2025,
+     10985,
+     439536.0
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT year, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE (product_1 IN (5033, 5040) OR product_2 IN (5033, 5040) OR product_3 IN (5033, 5040)) AND year BETWEEN 2019 AND 2025 GROUP BY year ORDER BY year"
+  },
+  "chart": {
+   "type": "line",
+   "x": "year",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": 2019,
+     "y": 417673.0,
+     "series": null
+    },
+    {
+     "x": 2020,
+     "y": 426109.0,
+     "series": null
+    },
+    {
+     "x": 2021,
+     "y": 375968.0,
+     "series": null
+    },
+    {
+     "x": 2022,
+     "y": 405545.0,
+     "series": null
+    },
+    {
+     "x": 2023,
+     "y": 405923.0,
+     "series": null
+    },
+    {
+     "x": 2024,
+     "y": 454008.0,
+     "series": null
+    },
+    {
+     "x": 2025,
+     "y": 439536.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+   "Product-code definitions across years have not been checked against CPSC's comparability tables, so year-to-year changes may reflect coding."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "floors_share_65",
+  "kind": "normal",
+  "question": "What share of ER visits by adults 65+ in 2025 involved floors?",
+  "expect": "1,768,793 of 4,837,571 = 36.6% (code 1807); 37.7% if 1817 porches/balconies/open-side floors is included, counting each case once",
+  "pass": true,
+  "fails": [],
+  "response": "In 2025, an estimated 1,768,793 injury-related ER visits by adults aged 65 and older involved floors or flooring materials (product code 1807), out of an estimated total of 4,837,571 injury-related ER visits for this age group. This represents approximately 36.56% of all injury-related ER visits for adults 65+.\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "floor"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"floor\", \"matches\": [{\"code\": 113, \"title\": \"Floor buffers or waxers\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 6}, {\"code\": 310, \"title\": \"Gas furnaces (excluding floor furnaces)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 311, \"title\": \"Oil furnaces (excluding floor furnaces)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 5}, {\"code\": 318, \"title\": \"Electric furnaces (excluding floor furnaces)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": null}, {\"code\": 384, \"title\": \"Floor furnaces (built into floor)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 3}, {\"code\": 904, \"title\": \"Floor waxes\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1807, \"title\": \"Floors or flooring materials\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1817, \"title\": \"Porches, balconies, open-side floors or floor openings\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 4070, \"title\": \"Floor lamps or table lamps, halogen\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 4071, \"title\": \"Floor lamps or table lamps, electric (excluding halogen lamps)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT \n    (SELECT ROUND(SUM(weight)) FROM v_case_products WHERE year = 2025 AND age_group = '65+' AND product_code = 1807) AS floor_est_visits,\n    (SELECT ROUND(SUM(weight)) FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 'all') AS total_est_visits,\n    ROUND(100.0 * (SELECT SUM(weight) FROM v_case_products WHERE year = 2025 AND age_group = '65+' AND product_code = 1807) / (SELECT SUM(weight) FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 'all'), 2) AS share_pct\n"
+    },
+    "result": "{\"error\": \"Binder Error: Referenced column \\\"weight\\\" not found in FROM clause!\"}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT \n    (SELECT ROUND(SUM(est_visits)) FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 1807) AS floor_est_visits,\n    (SELECT ROUND(SUM(est_visits)) FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 'all') AS total_est_visits,\n    ROUND(100.0 * (SELECT est_visits FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 1807) / (SELECT est_visits FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 'all'), 2) AS share_pct\n"
+    },
+    "result": "{\"error\": \"Conversion Error: Could not convert string 'all' to INT32\"}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT \n    (SELECT ROUND(est_visits) FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 1807) AS floor_est_visits,\n    (SELECT ROUND(est_visits) FROM v_product_estimates WHERE year = 2025 AND age_group = '65+' AND product_code = 0) AS total_est_visits\n"
+    },
+    "result": "{\"columns\": [\"floor_est_visits\", \"total_est_visits\"], \"rows\": [[1768793.0, null]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT product_code, product_title, est_visits FROM v_top_products WHERE year = 2025 AND age_group = '65+' ORDER BY rank LIMIT 5"
+    },
+    "result": "{\"columns\": [\"product_code\", \"product_title\", \"est_visits\"], \"rows\": [[1807, \"Floors or flooring materials\", 1768792.516499836], [4076, \"Beds or bedframes, other or not specified\", 591561.683599995], [1842, \"Stairs or steps (excluding pull-down and folding stairs)\", 423005.55139999493], [4074, \"Chairs, other or not specified\", 257725.26539999852], [611, \"Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)\", 163420.08089999988]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT \n    SUM(weight) AS total_est_visits,\n    SUM(CASE WHEN product_1 = 1807 OR product_2 = 1807 OR product_3 = 1807 THEN weight ELSE 0 END) AS floor_est_visits,\n    ROUND(100.0 * SUM(CASE WHEN product_1 = 1807 OR product_2 = 1807 OR product_3 = 1807 THEN weight ELSE 0 END) / SUM(weight), 2) AS share_pct\nFROM neiss_cases\nWHERE year = 2025 AND age_group = '65+'\n"
+    },
+    "result": "{\"columns\": [\"total_est_visits\", \"floor_est_visits\", \"share_pct\"], \"rows\": [[4837570.934900204, 1768792.5164998192, 36.56]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT age_group, \n       ROUND(SUM(weight)) AS total_est_visits,\n       ROUND(SUM(CASE WHEN product_1 = 1807 OR product_2 = 1807 OR product_3 = 1807 THEN weight ELSE 0 END)) AS floor_est_visits,\n       ROUND(100.0 * SUM(CASE WHEN product_1 = 1807 OR product_2 = 1807 OR product_3 = 1807 THEN weight ELSE 0 END) / SUM(weight), 2) AS share_pct\nFROM neiss_cases\nWHERE year = 2025\nGROUP BY age_group\nORDER BY age_group\n"
+    },
+    "result": "{\"columns\": [\"age_group\", \"total_est_visits\", \"floor_est_visits\", \"share_pct\"], \"rows\": [[\"0-4\", 1469070.0, 300827.0, 20.48], [\"15-24\", 2064131.0, 110675.0, 5.36], [\"25-44\", 2943375.0, 254743.0, 8.65], [\"45-64\", 2871821.0, 507410.0, 17.67], [\"5-14\", 2297600.0, 137209.0, 5.97], [\"65+\", 4837571.0, 1768793.0, 36.56], [\"unknown\", 1845.0, 340.0, 18.45]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "age_group",
+    "total_est_visits",
+    "floor_est_visits",
+    "share_pct"
+   ],
+   "rows": [
+    [
+     "0-4",
+     1469070.0,
+     300827.0,
+     20.48
+    ],
+    [
+     "15-24",
+     2064131.0,
+     110675.0,
+     5.36
+    ],
+    [
+     "25-44",
+     2943375.0,
+     254743.0,
+     8.65
+    ],
+    [
+     "45-64",
+     2871821.0,
+     507410.0,
+     17.67
+    ],
+    [
+     "5-14",
+     2297600.0,
+     137209.0,
+     5.97
+    ],
+    [
+     "65+",
+     4837571.0,
+     1768793.0,
+     36.56
+    ],
+    [
+     "unknown",
+     1845.0,
+     340.0,
+     18.45
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT age_group, \n       ROUND(SUM(weight)) AS total_est_visits,\n       ROUND(SUM(CASE WHEN product_1 = 1807 OR product_2 = 1807 OR product_3 = 1807 THEN weight ELSE 0 END)) AS floor_est_visits,\n       ROUND(100.0 * SUM(CASE WHEN product_1 = 1807 OR product_2 = 1807 OR product_3 = 1807 THEN weight ELSE 0 END) / SUM(weight), 2) AS share_pct\nFROM neiss_cases\nWHERE year = 2025\nGROUP BY age_group\nORDER BY age_group\n"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "age_group",
+   "y": "est_visits",
+   "series": "column",
+   "data": [
+    {
+     "x": "0-4",
+     "y": 1469070.0,
+     "series": "total_est_visits"
+    },
+    {
+     "x": "0-4",
+     "y": 300827.0,
+     "series": "floor_est_visits"
+    },
+    {
+     "x": "15-24",
+     "y": 2064131.0,
+     "series": "total_est_visits"
+    },
+    {
+     "x": "15-24",
+     "y": 110675.0,
+     "series": "floor_est_visits"
+    },
+    {
+     "x": "25-44",
+     "y": 2943375.0,
+     "series": "total_est_visits"
+    },
+    {
+     "x": "25-44",
+     "y": 254743.0,
+     "series": "floor_est_visits"
+    },
+    {
+     "x": "45-64",
+     "y": 2871821.0,
+     "series": "total_est_visits"
+    },
+    {
+     "x": "45-64",
+     "y": 507410.0,
+     "series": "floor_est_visits"
+    },
+    {
+     "x": "5-14",
+     "y": 2297600.0,
+     "series": "total_est_visits"
+    },
+    {
+     "x": "5-14",
+     "y": 137209.0,
+     "series": "floor_est_visits"
+    },
+    {
+     "x": "65+",
+     "y": 4837571.0,
+     "series": "total_est_visits"
+    },
+    {
+     "x": "65+",
+     "y": 1768793.0,
+     "series": "floor_est_visits"
+    },
+    {
+     "x": "unknown",
+     "y": 1845.0,
+     "series": "total_est_visits"
+    },
+    {
+     "x": "unknown",
+     "y": 340.0,
+     "series": "floor_est_visits"
+    }
+   ]
+  },
+  "caveats": [
+   "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "cannot_per_hour_risk",
+  "kind": "cannot",
+  "question": "Is it more dangerous per hour to ride a bike or a skateboard?",
+  "expect": null,
+  "pass": true,
+  "fails": [],
+  "response": "The data cannot answer which product is more dangerous per hour because there is no exposure data (such as hours of use), only counts of injury-related ER visits.\n\nTo show what the data can say instead, here are the estimated injury-related ER visits for bicycles and skateboards in 2025 across all age groups.\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "bicycle"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"bicycle\", \"matches\": [{\"code\": 1398, \"title\": \"Wheeled riding toys, unpowered (excluding bicycles and tricycles)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1531, \"title\": \"Baby carriers (bicycle-mounted)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 5005, \"title\": \"Riding toys (excluding bicycles and tricycles), not specified\", \"is_placeholder\": false, \"is_catch_all\": true, \"years_present\": 7}, {\"code\": 5033, \"title\": \"Mountain or all-terrain bicycles or accessories\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 5040, \"title\": \"Bicycles or accessories (excluding mountain or all-terrain bicycles)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 5045, \"title\": \"Electric power-assisted pedal bicycles (excl. off-road vehicles and minibikes)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 2}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample FROM v_top_products WHERE year = 2025 AND age_group = 'all' AND product_code IN (5033, 5040, 1333, 3215) ORDER BY est_visits DESC"
+    },
+    "result": "{\"columns\": [\"product_code\", \"product_title\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[5040, \"Bicycles or accessories (excluding mountain or all-terrain bicycles)\", 10644, 420962.0, false], [1333, \"Skateboards, unpowered or unspecified (title updated 2020)\", 1581, 61011.0, false], [5033, \"Mountain or all-terrain bicycles or accessories\", 342, 18626.0, false]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "product_code",
+    "product_title",
+    "n_cases",
+    "est_visits",
+    "low_sample"
+   ],
+   "rows": [
+    [
+     5040,
+     "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
+     10644,
+     420962.0,
+     false
+    ],
+    [
+     1333,
+     "Skateboards, unpowered or unspecified (title updated 2020)",
+     1581,
+     61011.0,
+     false
+    ],
+    [
+     5033,
+     "Mountain or all-terrain bicycles or accessories",
+     342,
+     18626.0,
+     false
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample FROM v_top_products WHERE year = 2025 AND age_group = 'all' AND product_code IN (5033, 5040, 1333, 3215) ORDER BY est_visits DESC"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "product_title",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
+     "y": 420962.0,
+     "series": null
+    },
+    {
+     "x": "Skateboards, unpowered or unspecified (title updated 2020)",
+     "y": 61011.0,
+     "series": null
+    },
+    {
+     "x": "Mountain or all-terrain bicycles or accessories",
+     "y": 18626.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [],
+  "mode": "detective"
+ },
+ {
+  "id": "cannot_rate_comparison",
+  "kind": "cannot",
+  "question": "Are adults 65+ more likely than children under 5 to get hurt on stairs?",
+  "expect": "Counts only (65+: 423,006; under 5: 81,016 in 2025); not rates, no population denominators",
+  "pass": true,
+  "fails": [],
+  "response": "Because the data has counts of injury-related ER visits rather than population denominators or exposure data, it cannot determine whether one age group is \"more likely\" or at higher risk than another. \n\nIn 2025, adults aged 65+ had an estimated 423,006 injury-related ER visits (from 8,865 sample cases) associated with stairs or steps (excluding pull-down and folding stairs), while children under 5 had an estimated 81,016 injury-related ER visits (from 3,701 sample cases).\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.\n\n| age_group | n_cases | est_visits |\n|---|---|---|\n| 65+ | 8865 | 423006 |\n| 0-4 | 3701 | 81016 |",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "stairs"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"stairs\", \"matches\": [{\"code\": 1840, \"title\": \"Pull-down or folding stairs\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1842, \"title\": \"Stairs or steps (excluding pull-down and folding stairs)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT age_group, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM v_case_products WHERE product_code = 1842 AND year = 2025 AND age_group IN ('65+', '0-4') GROUP BY age_group ORDER BY est_visits DESC"
+    },
+    "result": "{\"columns\": [\"age_group\", \"n_cases\", \"est_visits\"], \"rows\": [[\"65+\", 8865, 423006.0], [\"0-4\", 3701, 81016.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "age_group",
+    "n_cases",
+    "est_visits"
+   ],
+   "rows": [
+    [
+     "65+",
+     8865,
+     423006.0
+    ],
+    [
+     "0-4",
+     3701,
+     81016.0
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT age_group, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM v_case_products WHERE product_code = 1842 AND year = 2025 AND age_group IN ('65+', '0-4') GROUP BY age_group ORDER BY est_visits DESC"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "age_group",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": "65+",
+     "y": 423006.0,
+     "series": null
+    },
+    {
+     "x": "0-4",
+     "y": 81016.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "cannot_brand",
+  "kind": "cannot",
+  "question": "Which brand of stroller is the most dangerous?",
+  "expect": null,
+  "pass": true,
+  "fails": [],
+  "response": "The data cannot answer which brand of stroller is the most dangerous because NEISS records product types rather than brands, and SaferProducts reports are voluntary, unrepresentative, and cannot be used to determine danger or risk. \n\nTo show what the data can say instead, here are the estimated injury-related ER visits associated with strollers (NEISS product code 1531) for all ages in 2025:\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT year, age_group, n_cases, ROUND(est_visits) AS est_visits, low_sample\nFROM v_product_estimates\nWHERE product_code = 1531 AND year = 2025\nORDER BY \n  CASE age_group \n    WHEN 'all' THEN 1 \n    WHEN '0-4' THEN 2 \n    WHEN '5-14' THEN 3 \n    WHEN '15-24' THEN 4 \n    WHEN '25-44' THEN 5 \n    WHEN '45-64' THEN 6 \n    WHEN '65+' THEN 7 \n    ELSE 8 \n  END;"
+    },
+    "result": "{\"columns\": [\"year\", \"age_group\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[2025, \"all\", 6, 177.0, true], [2025, \"0-4\", 4, 118.0, true], [2025, \"5-14\", 1, 7.0, true], [2025, \"65+\", 1, 52.0, true]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "year",
+    "age_group",
+    "n_cases",
+    "est_visits",
+    "low_sample"
+   ],
+   "rows": [
+    [
+     2025,
+     "all",
+     6,
+     177.0,
+     true
+    ],
+    [
+     2025,
+     "0-4",
+     4,
+     118.0,
+     true
+    ],
+    [
+     2025,
+     "5-14",
+     1,
+     7.0,
+     true
+    ],
+    [
+     2025,
+     "65+",
+     1,
+     52.0,
+     true
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT year, age_group, n_cases, ROUND(est_visits) AS est_visits, low_sample\nFROM v_product_estimates\nWHERE product_code = 1531 AND year = 2025\nORDER BY \n  CASE age_group \n    WHEN 'all' THEN 1 \n    WHEN '0-4' THEN 2 \n    WHEN '5-14' THEN 3 \n    WHEN '15-24' THEN 4 \n    WHEN '25-44' THEN 5 \n    WHEN '45-64' THEN 6 \n    WHEN '65+' THEN 7 \n    ELSE 8 \n  END;"
+  },
+  "chart": {
+   "type": "bar",
+   "x": "age_group",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": "all",
+     "y": 177.0,
+     "series": null
+    },
+    {
+     "x": "0-4",
+     "y": 118.0,
+     "series": null
+    },
+    {
+     "x": "5-14",
+     "y": 7.0,
+     "series": null
+    },
+    {
+     "x": "65+",
+     "y": 52.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "Some estimates rest on fewer than 20 sample cases and are unstable (project threshold).",
+   "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "cannot_recall_effect",
+  "kind": "cannot",
+  "question": "Did the recall of infant loungers cause infant injuries to drop?",
+  "expect": null,
+  "pass": true,
+  "fails": [],
+  "response": "The data cannot answer whether the recall of infant loungers caused infant injuries to drop, because the NEISS database contains counts of injury-related ER visits rather than causation data, and product-code comparability and exposure changes over time are not tracked. \n\nFor the NEISS product category covering infant and toddler play centers (excluding jumpers, bouncers, and exercisers), estimated injury-related ER visits for children aged under 5 across the loaded years are as follows:\n\n- 2019: 161 estimated visits (sample size 11)\n- 2020: 296 estimated visits (sample size 24)\n- 2021: 269 estimated visits (sample size 16)\n- 2022: 455 estimated visits (sample size 16)\n- 2023: 544 estimated visits (sample size 24)\n- 2024: 402 estimated visits (sample size 23)\n- 2025: 1,628 estimated visits (sample size 49)\n\nPossible matches (not reviewed) for infant lounger recalls can be found via CPSC recall search, such as Recall ID 10893 (Cpzzkq Baby Loungers, 2026-07-30; URL: https://www.cpsc.gov/Recalls/2026/Recall-of-Cpzzkq-Baby-Loungers-Expanded-Due-to-Risk-of-Serious-Injury-or-Death-from-Suffocation-Hazard-Violate-Mandatory-Standard-for-Infant-Support-Cushions-Sold-on-Amazon-by-CetoPMax).\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "query": "lounger",
+     "kind": "product"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"lounger\", \"matches\": [], \"hint\": \"No match. Try one shorter word or a synonym.\"}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "infant"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"infant\", \"matches\": [{\"code\": 1519, \"title\": \"Car seats (for infants or children)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1539, \"title\": \"Shoelace fasteners (for infants)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 2}, {\"code\": 1550, \"title\": \"Infant and toddler play centers (excluding jumpers, bouncers, and exercisers\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "pillow"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"pillow\", \"matches\": [{\"code\": 662, \"title\": \"Waterbeds or water pillows\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 4050, \"title\": \"Pillows (excluding water pillows)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 4051, \"title\": \"Sheets or pillowcases\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "search_recalls",
+    "args": {
+     "product_code": null,
+     "keywords": "infant lounger, lounger",
+     "since_year": 2020
+    },
+    "result": "{\"target\": \"keywords 'infant lounger, lounger'\", \"candidates_checked\": 24, \"excluded_unrelated\": 2, \"recalls\": [{\"recall_id\": 10893, \"recall_date\": \"2026-07-30\", \"title\": \"Recall of Cpzzkq Baby Loungers Expanded Due to Risk Serious Injury or Death from Suffocation Hazard; Violate Mandatory Standard for Infant Support Cushions; Sold on Amazon by CetoPMax\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Recall-of-Cpzzkq-Baby-Loungers-Expanded-Due-to-Risk-of-Serious-Injury-or-Death-from-Suffocation-Hazard-Violate-Mandatory-Standard-for-Infant-Support-Cushions-Sold-on-Amazon-by-CetoPMax\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for infant support cushions because the padding can obstruct an infant's breathing, posing a serious risk of injury or deadly suffocation hazard.\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10841, \"recall_date\": \"2026-07-02\", \"title\": \"Vevor Recalls Baby Loungers Due to Risk of Serious Injury or Death from Entrapment and Fall Hazards; Violate Mandatory Standard for Infant Sleep Products\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Vevor-Recalls-Baby-Loungers-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-and-Fall-Hazards-Violate-Mandatory-Standard-for-Infant-Sleep-Products\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for infant sleep products. The sides are too low to contain an infant and the enclosed openings at the foot of the loungers are wider than allowed, posing serious risks of fal\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10830, \"recall_date\": \"2026-06-18\", \"title\": \"Joolz Recalls Aer2 Car Seat Adapters for Strollers Due to Risk of Serious Injury or Death from Suffocation and Fall Hazards; Violates Mandatory Standard for Infant Sleep Products\", \"url\": \"https://www.cpsc.gov/Recalls/2026/CooCooBaby-Baby-Loungers-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Suffocation-and-Fall-Hazards-Violates-Mandatory-Standard-for-Infant-Sleep-Products\", \"hazards_text\": \"The baby loungers violate the mandatory standard for Infant Sleep Products because the sides are shorter than the minimum side height limit to secure the infant; the sleeping pad's thickness exceeds the maximum limit, posing a suffocation h\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10738, \"recall_date\": \"2026-04-23\", \"title\": \"HappyGira Recalls Sweetie Baby and Style Life Eleven Baby Loungers Due to Risk of Serious Injury or Death from Suffocation and Fall Hazards; Violates Mandatory Standard for Infant Sleep Products\", \"url\": \"https://www.cpsc.gov/Recalls/2026/HappyGira-Recalls-Sweetie-Baby-and-Style-Life-Eleven-Baby-Loungers-Due-to-Risk-of-Serious-Injury-or-Death-from-Suffocation-and-Fall-Hazards-Violates-Mandatory-Standard-for-Infant-Sleep-Products\", \"hazards_text\": \"The baby loungers violate the mandatory standard for infant sleep products because the sides are shorter than the minimum side height limit to secure the infant and they do not have a stand, posing a fall hazard. Additionally, an infant can\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10739, \"recall_date\": \"2026-04-23\", \"title\": \"Cpzzkq Baby Loungers Recalled Due to Risk of Serious Injury or Death from Suffocation Hazard; Violates Mandatory Standard for Infant Support Cushions; Sold on Amazon by CetoPMax\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Cpzzkq-Baby-Loungers-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Suffocation-Hazard-Violates-Mandatory-Standard-for-Infant-Support-Cushions-Sold-on-Amazon-by-CetoPMax\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for infant support cushions because the padding can obstruct an infant's breathing, posing a serious risk of injury or deadly suffocation hazard.\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10558, \"recall_date\": \"2026-01-15\", \"title\": \"BBWOO Baby Loungers Recalled Due to Risk of Serious Injury or Death from Head Injury; Violates Mandatory Standard for Bicycle Helmets\", \"url\": \"https://www.cpsc.gov/Recalls/2026/BBWOO-Baby-Loungers-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-and-Fall-Hazards-Violate-Mandatory-Standard-for-Infant-Sleep-Products-Sold-on-Amazon-by-LSY-Direct\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for Infant Sleep Products. The sides are too low to contain an infant and the enclosed openings at the foot of the loungers are wider than allowed, posing serious risks of fal\", \"why\": \"recalled product is a 'lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10555, \"recall_date\": \"2026-01-08\", \"title\": \"Joyful Journeys Recalls Baby Loungers Due to Risk of Serious Injury or Death from Entrapment and Fall Hazards; Violates Mandatory Standard for Infant Sleep Products\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Joyful-Journeys-Recalls-Baby-Loungers-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-and-Fall-Hazards-Violates-Mandatory-Standard-for-Infant-Sleep-Products\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for Infant Sleep Products. The sides are too low to contain an infant and the enclosed openings at the foot of the loungers are wider than allowed, posing serious risks of fal\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10502, \"recall_date\": \"2025-11-26\", \"title\": \"Sofoliana and Glotika Baby Loungers Recalled Due to Risk of Serious Injury or Death from Entrapment and Fall Hazards; Violates Mandatory Standard for Infant Sleep Products; Sold on Amazon by Bosen US\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Sofoliana-and-Glotika-Baby-Loungers-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-and-Fall-Hazards-Violates-Mandatory-Standard-for-Infant-Sleep-Products-Sold-on-Amazon-by-Bosen-US\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for Infant Sleep Products. The sides are too low to contain an infant and the enclosed openings at the foot of the loungers are wider than allowed, posing serious risks of fal\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10499, \"recall_date\": \"2025-11-26\", \"title\": \"Macardac Baby Loungers Recalled Due to Risk of Serious Injury or Death from Entrapment and Fall Hazards; Violates Mandatory Standard for Infant Sleep Products; Sold on Amazon by Macardac Products\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Macardac-Baby-Loungers-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-and-Fall-Hazards-Violates-Mandatory-Standard-for-Infant-Sleep-Products-Sold-on-Amazon-by-Macardac-Products\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for Infant Sleep Products. The sides are too low to contain an infant and the enclosed openings at the foot of the loungers are wider than allowed, posing serious risks of fal\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}, {\"recall_id\": 10498, \"recall_date\": \"2025-11-26\", \"title\": \"Alinux Baby Loungers Recalled Due to Risk of Serious Injury or Death from Entrapment and Fall Hazards; Violates Mandatory Standard for Infant Sleep Products; Sold on Amazon by Winkids\", \"url\": \"https://www.cpsc.gov/Recalls/2026/Alinux-Baby-Loungers-Recalled-Due-to-Risk-of-Serious-Injury-or-Death-from-Entrapment-and-Fall-Hazards-Violates-Mandatory-Standard-for-Infant-Sleep-Products-Sold-on-Amazon-by-Winkids\", \"hazards_text\": \"The recalled baby loungers violate the mandatory safety standard for Infant Sleep Products. The sides are too low to contain an infant and the enclosed openings at the foot of the loungers are wider than allowed, posing serious risks of fal\", \"why\": \"recalled product is a 'infant lounger'\", \"link_status\": \"possible match (not reviewed)\"}], \"more\": 12}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "queries": [
+      "SELECT 1"
+     ]
+    },
+    "result": "{\"rejected\": \"Rejected: this query reads no table. Numbers must come from the data, so don't type values into SQL; query the table or view that holds them (e.g. v_product_estimates) and return all groups in that one query.\"}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT year, count(*) AS n_cases, round(sum(weight)) AS est_visits FROM v_case_products WHERE product_code = 1550 AND year BETWEEN 2019 AND 2025 GROUP BY year ORDER BY year"
+    },
+    "result": "{\"columns\": [\"year\", \"n_cases\", \"est_visits\"], \"rows\": [[2019, 11, 161.0], [2020, 24, 296.0], [2021, 16, 269.0], [2022, 16, 455.0], [2023, 24, 544.0], [2024, 23, 402.0], [2025, 49, 1628.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "year",
+    "n_cases",
+    "est_visits"
+   ],
+   "rows": [
+    [
+     2019,
+     11,
+     161.0
+    ],
+    [
+     2020,
+     24,
+     296.0
+    ],
+    [
+     2021,
+     16,
+     269.0
+    ],
+    [
+     2022,
+     16,
+     455.0
+    ],
+    [
+     2023,
+     24,
+     544.0
+    ],
+    [
+     2024,
+     23,
+     402.0
+    ],
+    [
+     2025,
+     49,
+     1628.0
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT year, count(*) AS n_cases, round(sum(weight)) AS est_visits FROM v_case_products WHERE product_code = 1550 AND year BETWEEN 2019 AND 2025 GROUP BY year ORDER BY year"
+  },
+  "chart": {
+   "type": "line",
+   "x": "year",
+   "y": "est_visits",
+   "series": null,
+   "data": [
+    {
+     "x": 2019,
+     "y": 161.0,
+     "series": null
+    },
+    {
+     "x": 2020,
+     "y": 296.0,
+     "series": null
+    },
+    {
+     "x": 2021,
+     "y": 269.0,
+     "series": null
+    },
+    {
+     "x": 2022,
+     "y": 455.0,
+     "series": null
+    },
+    {
+     "x": 2023,
+     "y": 544.0,
+     "series": null
+    },
+    {
+     "x": 2024,
+     "y": 402.0,
+     "series": null
+    },
+    {
+     "x": 2025,
+     "y": 1628.0,
+     "series": null
+    }
+   ]
+  },
+  "caveats": [
+   "Some estimates rest on fewer than 20 sample cases and are unstable (project threshold).",
+   "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+   "Product-code definitions across years have not been checked against CPSC's comparability tables, so year-to-year changes may reflect coding.",
+   "Recalls shown are possible matches (not reviewed) whose recalled product matches the NEISS product; a recall does not show that a product caused these injury-related ER visits."
+  ],
+  "mode": "detective"
+ },
+ {
+  "id": "cannot_state",
+  "kind": "cannot",
+  "question": "How many trampoline injuries were there in Ohio in 2024?",
+  "expect": null,
+  "pass": true,
+  "fails": [],
+  "response": "The data cannot answer how many trampoline injuries occurred in Ohio because NEISS data does not track locations by U.S. state, cities, or specific hospitals. \n\nNationwide in 2024, there were an estimated 118,179 injury-related ER visits (from 3,910 sample cases) associated with trampolines (product code 1233). \n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "query": "trampoline",
+     "kind": "product"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"trampoline\", \"matches\": [{\"code\": 1233, \"title\": \"Trampolines\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1272, \"title\": \"Gymnastics (activity, apparel or equipment; excluding trampolines)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT count(*) FROM neiss_cases WHERE year = 2024 AND (product_1 = 1233 OR product_2 = 1233 OR product_3 = 1233)"
+    },
+    "result": "{\"rejected\": \"Rejected: this query counts NEISS rows without the sample weight. NEISS is a probability sample, so COUNT(*) is only the number of sample cases, not a national number. Add SUM(weight) AS est_visits (keep COUNT(*) AS n_cases next to it), or use the weighted views v_product_estimates / v_top_products (column est_visits).\"}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT column_name, notes FROM data_dictionary WHERE table_name = 'neiss_cases'"
+    },
+    "result": "{\"columns\": [\"column_name\", \"notes\"], \"rows\": [[\"case_id\", \"PK. `CPSC_Case_Number`\"], [\"treatment_date\", \"`Treatment_Date` (`MM/DD/YYYY`)\"], [\"year\", \"`year(treatment_date)`\"], [\"age_raw\", \"`Age` as coded\"], [\"age_months\", \"Rule 4\"], [\"age_years\", \"Rule 4. NULL means unknown\"], [\"age_group\", \"Rule 4\"], [\"sex\", \"Codebook. 0 = not recorded; 3 only from 2021\"], [\"race\", \"Codebook. 0 = not stated\"], [\"race_other\", \"Blank -> NULL\"], [\"hispanic\", \"2019+. 0 = unknown\"], [\"body_part\", \"Codebook. 0 = Internal (a real value), 87 = not stated\"], [\"body_part_2\", \"2019+. Blank -> NULL\"], [\"diagnosis\", \"Codebook. 71 = other/not stated\"], [\"diagnosis_other\", \"Blank -> NULL\"], [\"diagnosis_2\", \"2019+. Blank -> NULL\"], [\"diagnosis_2_other\", \"Blank -> NULL\"], [\"disposition\", \"Codebook. 8 = fatality, 9 = unknown\"], [\"location\", \"Codebook. 0 = not recorded (36% in 2025)\"], [\"fire_involvement\", \"Rule 3\"], [\"product_1\", \"Never 0\"], [\"product_2\", \"0 -> NULL\"], [\"product_3\", \"2019+. 0 -> NULL\"], [\"alcohol\", \"2019+. Rule 3\"], [\"drug\", \"2019+. Rule 3\"], [\"narrative\", \"`Narrative_1` (the dictionary calls it `Narrative`)\"], [\"narrative_era\", \"`from_2019_400` if treatment_date >= 2019-01-01, else `pre_2019_142`\"], [\"stratum\", \"C, L, M, S, V\"], [\"psu\", \"Hospital ID\"], [\"weight\", \"`Weight`. Rule 1\"], [\"source_file\", \"e.g. `neiss2025.tsv`\"]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT year, n_cases, ROUND(est_visits) AS est_visits, low_sample FROM v_product_estimates WHERE product_code = 1233 AND age_group = 'all' AND year = 2024"
+    },
+    "result": "{\"columns\": [\"year\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[2024, 3910, 118179.0, false]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "year",
+    "n_cases",
+    "est_visits",
+    "low_sample"
+   ],
+   "rows": [
+    [
+     2024,
+     3910,
+     118179.0,
+     false
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT year, n_cases, ROUND(est_visits) AS est_visits, low_sample FROM v_product_estimates WHERE product_code = 1233 AND age_group = 'all' AND year = 2024"
+  },
+  "chart": null,
+  "caveats": [],
+  "mode": "detective"
+ },
+ {
+  "id": "cannot_year_2012",
+  "kind": "cannot",
+  "question": "How many people were injured by lawn mowers in 2012?",
+  "expect": null,
+  "pass": true,
+  "fails": [],
+  "response": "The data cannot answer this question because the loaded NEISS emergency room database only covers the years 2019 to 2025, and does not include 2012. \n\nTo show what the data can provide instead, here are the estimated injury-related ER visits involving lawn mowers (product codes 1401, 1422, 1431, 1439, and 1448 combined) for the most recent available year, 2025:\n\n- **Combined Lawn Mowers (2025)**: 1,602 sample cases accounting for an estimated 81,840 injury-related ER visits.\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+  "tool_calls": [
+   {
+    "name": "lookup_codes",
+    "args": {
+     "kind": "product",
+     "query": "lawn mower"
+    },
+    "result": "{\"kind\": \"product\", \"query\": \"lawn mower\", \"matches\": [{\"code\": 1401, \"title\": \"Power lawn mowers, not specified\", \"is_placeholder\": false, \"is_catch_all\": true, \"years_present\": 7}, {\"code\": 1422, \"title\": \"Riding power lawn mowers\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}, {\"code\": 1431, \"title\": \"Grass and leaf catchers (attachments for lawn mowers)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 5}, {\"code\": 1439, \"title\": \"Lawn mowers, not specified\", \"is_placeholder\": false, \"is_catch_all\": true, \"years_present\": 7}, {\"code\": 1448, \"title\": \"Rotary power lawn mowers (walk-behind)\", \"is_placeholder\": false, \"is_catch_all\": false, \"years_present\": 7}], \"more\": 0}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT year, product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample FROM v_product_estimates WHERE year = 2012 AND age_group = 'all' AND product_code IN (1401, 1422, 1431, 1439, 1448) ORDER BY est_visits DESC"
+    },
+    "result": "{\"columns\": [\"year\", \"product_code\", \"product_title\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT MIN(year), MAX(year) FROM neiss_cases"
+    },
+    "result": "{\"columns\": [\"min(\\\"year\\\")\", \"max(\\\"year\\\")\"], \"rows\": [[2019, 2025]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT \n    p.product_code,\n    pc.product_title,\n    COUNT(*) AS n_cases,\n    ROUND(SUM(p.weight)) AS est_visits,\n    MIN(p.low_sample) AS low_sample\nFROM (\n    SELECT 2025 AS year, product_1 AS product_code, weight, 0 AS low_sample FROM neiss_cases WHERE year = 2025 AND (product_1 IN (1401, 1422, 1431, 1439, 1448) OR product_2 IN (1401, 1422, 1431, 1439, 1448) OR product_3 IN (1401, 1422, 1431, 1439, 1448))\n) p\nJOIN product_codes pc ON pc.product_code = p.product_code\nGROUP BY 1, 2\nORDER BY est_visits DESC"
+    },
+    "result": "{\"columns\": [\"product_code\", \"product_title\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[1439, \"Lawn mowers, not specified\", 1019, 51097.0, 0], [1422, \"Riding power lawn mowers\", 262, 15268.0, 0], [1401, \"Power lawn mowers, not specified\", 217, 9849.0, 0], [1448, \"Rotary power lawn mowers (walk-behind)\", 26, 1544.0, 0], [1871, \"Fences or fence posts\", 5, 269.0, 0], [3299, \"Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)\", 4, 239.0, 0], [910, \"Gasoline\", 6, 209.0, 0], [884, \"Batteries\", 3, 205.0, 0], [1819, \"Nails, screws, carpet tacks or thumbtacks -> Nails, screws, tacks or bolts\", 3, 191.0, 0], [897, \"Power workshop grinders, buffers or polishers\", 3, 183.0, 0], [1615, \"Footwear\", 4, 178.0, 0], [1212, \"Golf (activity, apparel or equipment)\", 2, 157.0, 0], [1464, \"Lawn trimmers or edgers, powered (excluding brushcutters)\", 4, 155.0, 0], [837, \"Wire, not specified\", 2, 131.0, 0], [4074, \"Chairs, other or not specified\", 4, 129.0, 0], [1144, \"Bags, not elsewhere classified\", 2, 127.0, 0], [4081, \"Cords, electrical, other or not specified\", 1, 113.0, 0], [557, \"Computers (equipment and electronic games)\", 1, 113.0, 0], [1062, \"Tractors, other or not specified\", 1, 109.0, 0], [5036, \"Two-wheeled, powered, off-road vehicles (incl. dirt bikes and trail bikes; excl. mopeds and minibikes)\", 1, 109.0, 0], [827, \"Hammers\", 1, 109.0, 0], [1884, \"Ceilings and walls (interior part of completed structure)\", 1, 105.0, 0], [3235, \"Other ball sports (activity, apparel or equipment)\", 1, 105.0, 0], [1461, \"Leaf blowers\", 2, 104.0, 0], [3246, \"Swings or swing sets (excluding portable baby swings)\", 2, 78.0, 0], [1817, \"Porches, balconies, open-side floors or floor openings\", 2, 59.0, 0], [857, \"Pliers, wire cutters or wrenches\", 2, 54.0, 0], [1402, \"Manual push mowers (unpowered)\", 1, 52.0, 0], [1408, \"Power tillers or cultivators (not farm equipment)\", 1, 52.0, 0], [954, \"General purpose household cleaners (excluding abrasives, ammonia, pine oil and toilet bowl products)\", 1, 52.0, 0], [1267, \"Soccer (activity, apparel or equipment)\", 1, 52.0, 0], [1607, \"Eye protection devices\", 1, 52.0, 0], [899, \"Workshop grinders, buffers, or polishers, not specified\", 1, 52.0, 0], [888, \"Sprayers, not elsewhere classified\", 1, 52.0, 0], [1465, \"Decorative yard equipment, excluding water features\", 1, 52.0, 0], [1870, \"Windowsills or frames\", 1, 52.0, 0], [3284, \"Tennis (activity, apparel or equipment)\", 1, 52.0, 0], [1403, \"Other unpowered garden tools\", 1, 52.0, 0], [1842, \"Stairs or steps (excluding pull-down and folding stairs)\", 2, 51.0, 0], [1205, \"Basketball (activity, apparel or equipment)\", 1, 49.0, 0], [1217, \"Sleds\", 1, 26.0, 0], [1715, \"Pet supplies (excluding foods and medicines)\", 1, 26.0, 0], [1889, \"Elevators or other lifts (excl. escalators, hoists, jacks, forklifts and automotive lifts)\", 1, 26.0, 0], [1647, \"Clothing accessories\", 1, 26.0, 0], [1865, \"Poles (excluding fence posts, fishing, pole vaults and play-ground equipment)\", 1, 26.0, 0], [1807, \"Floors or flooring materials\", 1, 26.0, 0], [1414, \"Garden hoses, nozzles or sprinklers\", 1, 26.0, 0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   },
+   {
+    "name": "run_sql",
+    "args": {
+     "query": "SELECT \n    'Combined Lawn Mowers' AS product_group,\n    COUNT(*) AS n_cases,\n    ROUND(SUM(weight)) AS est_visits\nFROM neiss_cases\nWHERE year = 2025 \n  AND (product_1 IN (1401, 1422, 1431, 1439, 1448) \n       OR product_2 IN (1401, 1422, 1431, 1439, 1448) \n       OR product_3 IN (1401, 1422, 1431, 1439, 1448))"
+    },
+    "result": "{\"columns\": [\"product_group\", \"n_cases\", \"est_visits\"], \"rows\": [[\"Combined Lawn Mowers\", 1602, 81840.0]], \"truncated\": false}",
+    "agent": "Product-Injury Detective"
+   }
+  ],
+  "table": {
+   "columns": [
+    "product_group",
+    "n_cases",
+    "est_visits"
+   ],
+   "rows": [
+    [
+     "Combined Lawn Mowers",
+     1602,
+     81840.0
+    ]
+   ],
+   "truncated": false,
+   "sql": "SELECT \n    'Combined Lawn Mowers' AS product_group,\n    COUNT(*) AS n_cases,\n    ROUND(SUM(weight)) AS est_visits\nFROM neiss_cases\nWHERE year = 2025 \n  AND (product_1 IN (1401, 1422, 1431, 1439, 1448) \n       OR product_2 IN (1401, 1422, 1431, 1439, 1448) \n       OR product_3 IN (1401, 1422, 1431, 1439, 1448))"
+  },
+  "chart": null,
+  "caveats": [
+   "Some estimates rest on fewer than 20 sample cases and are unstable (project threshold)."
+  ],
+  "mode": "detective"
+ }
+]
