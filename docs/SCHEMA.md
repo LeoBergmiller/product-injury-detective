@@ -38,8 +38,12 @@ this file.
 | `injuries.duckdb` (all tables + views) | `build/build_db.py` | Leo | all Parquet above |
 
 Run order: `build_product_codes` → `build_neiss` → `build_saferproducts` →
-`build_recalls` → `build_xwalks` → `build_db`. The fetch scripts run only when
-refreshing the raw pulls.
+`build_recalls` → `build_xwalks` → `build_db` → `build_agent_context`. The fetch
+scripts run only when refreshing the raw pulls.
+
+`build/build_agent_context.py` (deterministic) reads this file and the built DB and
+writes `data/processed/agent_context.json` and `data/processed/system_prompt.md`,
+which `app.py` loads. Don't edit those two files by hand; see `docs/AGENT_DESIGN.md`.
 
 Owners marked TBD are for the team to assign (arapinan, rainliu19).
 
@@ -368,3 +372,6 @@ All changes are additive or loosen a rule. No column was removed or renamed.
 8. **`product_recall_xwalk.match_method` adds `sp_category_id`.** Terms-only rows use
    `confidence = 'low'`. Reviewer-only CSV columns are documented above.
 9. **`v_product_estimates` adds `age_group = 'all'` rows** and a `title_unknown` flag.
+10. **Agent context outputs.** `build_agent_context.py` adds two generated, non-Parquet
+    files to `data/processed/` (`agent_context.json`, `system_prompt.md`). They're not
+    contract tables and aren't validated by `build_db.py`.

@@ -236,3 +236,4 @@ data/raw/
 /data/processed/*.tmp
 /data/processed/tmp/
 # (GCS-hosted outputs, if any, listed here)
+tests/results/

@@ -1,0 +1,37 @@
+{
+ "case": {
+  "id": "under5_age_filter",
+  "question": "How many ER visits were there for children under 5 in 2025?",
+  "expected": "1,469,070 estimated visits (57,638 sample cases); Age < 5 gives 856,149"
+ },
+ "mode": "detective",
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:02 UTC",
+ "response": "In 2025, there were an estimated 1,469,070 emergency room visits (based on 57,638 sample cases) for children under 5 across all products in the NEISS data.",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_years < 5"
+   },
+   "result": "{\"columns\": [\"n_cases\", \"est_visits\"], \"rows\": [[57638, 1469070.0]], \"truncated\": false}",
+   "agent": "Product-Injury Detective"
+  }
+ ],
+ "table": {
+  "columns": [
+   "n_cases",
+   "est_visits"
+  ],
+  "rows": [
+   [
+    57638,
+    1469070.0
+   ]
+  ],
+  "truncated": false,
+  "sql": "SELECT COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_years < 5"
+ },
+ "chart": null,
+ "caveats": []
+}

@@ -1,0 +1,79 @@
+{
+ "case": {
+  "id": "product_ranking_weights",
+  "question": "Which products send the most people to the ER in 2025?",
+  "expected": "Floors 3,079,996; stairs 1,310,287; beds 1,133,481 (weighted, any slot)"
+ },
+ "mode": "plain",
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:02 UTC",
+ "response": "Based on the 2025 NEISS emergency department injury data, here are the top 10 products/product categories sending the most people to the ER (ranked by estimated national injuries based on sample weights):\n\n1. **Floors or flooring materials** (Code 1807): ~2,199,379 injuries\n2. **Stairs or steps** (Code 1842): ~1,228,377 injuries\n3. **Beds or bedframes** (Code 4076): ~999,656 injuries\n4. **Chairs** (Code 4074): ~433,183 injuries\n5. **Bicycles or accessories** (Code 5040): ~412,756 injuries\n6. **Bathtubs or showers** (Code 611): ~369,916 injuries\n7. **Exercise (activity/apparel without equipment)** (Code 3299): ~361,889 injuries\n8. **Basketball** (Code 1205): ~358,220 injuries\n9. **Knives, nec** (Code 464): ~342,503 injuries\n10. **Football** (Code 1211): ~307,911 injuries",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT \n    p.title AS product_name,\n    t.product_code,\n    COUNT(*) AS injury_count,\n    ROUND(SUM(t.weight), 1) AS estimated_total_injuries\nFROM neiss t\nJOIN product_codes p ON t.product_code = p.product_code\nWHERE t.year = 2025\nGROUP BY t.product_code, p.title\nORDER BY estimated_total_injuries DESC\nLIMIT 10;\n"
+   },
+   "result": "{\"error\": \"Binder Error: Values list \\\"t\\\" does not have a column named \\\"product_code\\\"\"}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nDESCRIBE neiss;\n"
+   },
+   "result": "{\"columns\": [\"column_name\", \"column_type\", \"null\", \"key\", \"default\", \"extra\"], \"rows\": [[\"CPSC_Case_Number\", \"BIGINT\", \"YES\", null, null, null], [\"Treatment_Date\", \"DATE\", \"YES\", null, null, null], [\"Age\", \"SMALLINT\", \"YES\", null, null, null], [\"Sex\", \"SMALLINT\", \"YES\", null, null, null], [\"Race\", \"SMALLINT\", \"YES\", null, null, null], [\"Other_Race\", \"VARCHAR\", \"YES\", null, null, null], [\"Hispanic\", \"SMALLINT\", \"YES\", null, null, null], [\"Body_Part\", \"SMALLINT\", \"YES\", null, null, null], [\"Diagnosis\", \"SMALLINT\", \"YES\", null, null, null], [\"Other_Diagnosis\", \"VARCHAR\", \"YES\", null, null, null], [\"Body_Part_2\", \"SMALLINT\", \"YES\", null, null, null], [\"Diagnosis_2\", \"SMALLINT\", \"YES\", null, null, null], [\"Other_Diagnosis_2\", \"VARCHAR\", \"YES\", null, null, null], [\"Disposition\", \"SMALLINT\", \"YES\", null, null, null], [\"Location\", \"SMALLINT\", \"YES\", null, null, null], [\"Fire_Involvement\", \"SMALLINT\", \"YES\", null, null, null], [\"Product_1\", \"INTEGER\", \"YES\", null, null, null], [\"Product_2\", \"INTEGER\", \"YES\", null, null, null], [\"Product_3\", \"INTEGER\", \"YES\", null, null, null], [\"Alcohol\", \"SMALLINT\", \"YES\", null, null, null], [\"Drug\", \"SMALLINT\", \"YES\", null, null, null], [\"Narrative_1\", \"VARCHAR\", \"YES\", null, null, null], [\"Stratum\", \"VARCHAR\", \"YES\", null, null, null], [\"PSU\", \"SMALLINT\", \"YES\", null, null, null], [\"Weight\", \"DOUBLE\", \"YES\", null, null, null]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT \n    p.title AS product_name,\n    t.Product_1 AS product_code,\n    COUNT(*) AS sample_count,\n    ROUND(SUM(t.Weight), 1) AS estimated_total_injuries\nFROM neiss t\nJOIN product_codes p ON t.Product_1 = p.product_code\nWHERE EXTRACT(YEAR FROM t.Treatment_Date) = 2025\nGROUP BY t.Product_1, p.title\nORDER BY estimated_total_injuries DESC\nLIMIT 10;\n"
+   },
+   "result": "{\"error\": \"Binder Error: Values list \\\"p\\\" does not have a column named \\\"title\\\"\"}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nDESCRIBE product_codes;\n"
+   },
+   "result": "{\"columns\": [\"column_name\", \"column_type\", \"null\", \"key\", \"default\", \"extra\"], \"rows\": [[\"product_code\", \"INTEGER\", \"YES\", null, null, null], [\"product_title\", \"VARCHAR\", \"YES\", null, null, null]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT \n    p.product_title AS product_name,\n    t.Product_1 AS product_code,\n    COUNT(*) AS sample_count,\n    ROUND(SUM(t.Weight), 1) AS estimated_total_injuries\nFROM neiss t\nJOIN product_codes p ON t.Product_1 = p.product_code\nWHERE EXTRACT(YEAR FROM t.Treatment_Date) = 2025\nGROUP BY t.Product_1, p.product_title\nORDER BY estimated_total_injuries DESC\nLIMIT 10;\n"
+   },
+   "result": "{\"columns\": [\"product_name\", \"product_code\", \"sample_count\", \"estimated_total_injuries\"], \"rows\": [[\"Floors or flooring materials\", 1807, 47267, 2199378.8], [\"Stairs or steps (excluding pull-down and folding stairs)\", 1842, 29531, 1228377.1], [\"Beds or bedframes, other or not specified\", 4076, 25989, 999656.2], [\"Chairs, other or not specified\", 4074, 10818, 433183.1], [\"Bicycles or accessories (excluding mountain or all-terrain bicycles)\", 5040, 10456, 412756.0], [\"Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)\", 611, 8647, 369915.6], [\"Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)\", 3299, 8476, 361889.3], [\"Basketball (activity, apparel or equipment)\", 1205, 10306, 358220.0], [\"Knives, not elsewhere classified\", 464, 7034, 342503.4], [\"Football (activity, apparel or equipment)\", 1211, 9754, 307911.0]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT \n    MIN(Treatment_Date) AS min_date, \n    MAX(Treatment_Date) AS max_date,\n    COUNT(*) AS total_records\nFROM neiss\nWHERE EXTRACT(YEAR FROM Treatment_Date) = 2025;\n"
+   },
+   "result": "{\"columns\": [\"min_date\", \"max_date\", \"total_records\"], \"rows\": [[\"2025-01-01\", \"2025-12-31\", 410201]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "min_date",
+   "max_date",
+   "total_records"
+  ],
+  "rows": [
+   [
+    "2025-01-01",
+    "2025-12-31",
+    410201
+   ]
+  ],
+  "truncated": false,
+  "sql": "\nSELECT \n    MIN(Treatment_Date) AS min_date, \n    MAX(Treatment_Date) AS max_date,\n    COUNT(*) AS total_records\nFROM neiss\nWHERE EXTRACT(YEAR FROM Treatment_Date) = 2025;\n"
+ },
+ "chart": null,
+ "caveats": []
+}

@@ -1,0 +1,76 @@
+# Live agent checks (tests/test_questions.py). Expected numbers were verified with SQL
+# against data/processed/injuries.duckdb on 2026-11-08.
+# Checks (all optional):
+#   tools_any:  at least one of these tools was called
+#   tools_none: none of these tools was called
+#   text_any:   regexes; the answer must match at least one of each group (all groups)
+#   text_none:  regexes the answer must not match
+questions:
+  # --- README samples
+  - id: sample_under5
+    kind: sample
+    question: "How many ER visits were there for children under 5 in 2025?"
+    expect: "1,469,070 estimated visits (57,638 cases)"
+    tools_any: [run_sql]
+    text_any: [["1,469,070|1\\.47 million|1\\.5 million"]]
+    text_none: ["856,149"]
+  - id: sample_65plus_recalls
+    kind: sample
+    question: "Which products send the most adults 65+ to the ER in 2025, and have any been recalled?"
+    expect: "Floors 1,768,793; beds 591,562; stairs 423,006; chairs 257,725; bathtubs 163,420. Recalls are possible matches"
+    tools_any: [search_recalls]
+    text_any: [["[Ff]loor"], ["1,768,793|1\\.77 million|1\\.8 million"], ["possible|not (been )?(reviewed|verified|audited)|may (be|match)"]]
+  - id: sample_stairs_age
+    kind: sample
+    question: "How do injuries on stairs compare for children under 5 and adults 65+ in 2025?"
+    expect: "65+: 423,006 (8,865 cases); under 5: 81,016 (3,701 cases)"
+    tools_any: [run_sql]
+    text_any: [["423,006|423,000|423 thousand|0\\.42 million"], ["81,016|81,000|81 thousand"]]
+  # --- normal questions
+  - id: trampoline_body_parts
+    kind: normal
+    question: "What body parts are injured most often on trampolines in 2024?"
+    expect: "Ankle 18,313; knee 12,769; lower leg 12,431; head 10,049"
+    tools_any: [run_sql]
+    text_any: [["[Aa]nkle"], ["18,313|18,300|18\\.3 ?(k|thousand)"]]
+  - id: bunk_bed_recalls
+    kind: normal
+    question: "Have there been recalls of bunk beds since 2020? Give me links."
+    expect: "8 keyword matches since 2020, e.g. Interior Resources steel bunk beds (2025-03-27)"
+    tools_any: [search_recalls]
+    text_any: [["cpsc\\.gov/Recalls"]]
+  - id: bicycle_by_year
+    kind: normal
+    question: "How have ER visits involving bicycles changed from 2019 to 2025?"
+    expect: "Code 5040: 408,353 (2019) -> 420,962 (2025). Codes 5033+5040, each case once: 417,673 -> 439,536. Must mention code comparability"
+    tools_any: [run_sql]
+    text_any: [["408,353|408,000|408 thousand|0\\.41 million|417,673|418,000"], ["420,962|421,000|421 thousand|0\\.42 million|439,536|440,000"], ["defin|coding|comparab|chang"]]
+  - id: floors_share_65
+    kind: normal
+    question: "What share of ER visits by adults 65+ in 2025 involved floors?"
+    expect: "1,768,793 of 4,837,571 = 36.6% (code 1807); 37.7% if 1817 porches/balconies/open-side floors is included, counting each case once"
+    tools_any: [run_sql]
+    text_any: [["36\\.[5-7] ?%|37(\\.[0-9])? ?%|about a third|over a third|more than a third"]]
+  # --- the data cannot answer (must say so)
+  - id: cannot_per_hour_risk
+    kind: cannot
+    question: "Is it more dangerous per hour to ride a bike or a skateboard?"
+    text_none: ["let's (check|look|start|find)"]
+    text_any: [["exposure|per hour|how (many|much|often) (people|time)|hours|usage|participation|can(no|')t (tell|answer|calculate|determine)"]]
+  - id: cannot_brand
+    kind: cannot
+    question: "Which brand of stroller causes the most ER visits?"
+    text_any: [["brand"], ["(does not|doesn't|do not|don't|no|not) (track|record|include|contain|have|capture|collect)|no brand"]]
+  - id: cannot_recall_effect
+    kind: cannot
+    question: "Did the recall of infant loungers cause infant injuries to drop?"
+    text_any: [["caus|attribute|can(no|')t (tell|say|show|determine|prove)|not (proof|evidence)|doesn't show|does not show"]]
+  - id: cannot_state
+    kind: cannot
+    question: "How many trampoline injuries were there in Ohio in 2024?"
+    text_any: [["state|Ohio|location|geograph"], ["not|no |can(no|')t|doesn't|does not|isn't|unavailable"]]
+    text_none: ["Ohio[^.]{0,40}\\b\\d{1,3},\\d{3}\\b"]
+  - id: cannot_year_2012
+    kind: cannot
+    question: "How many people were injured by lawn mowers in 2012?"
+    text_any: [["2019|not (loaded|included|available|cover)|only (covers|has|includes)"]]

@@ -1,0 +1,35 @@
+{
+ "case": {
+  "id": "under5_age_filter",
+  "question": "How many ER visits were there for children under 5 in 2025?",
+  "expected": "1,469,070 estimated visits (57,638 sample cases); Age < 5 gives 856,149"
+ },
+ "mode": "plain",
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:02 UTC",
+ "response": "There were **33,344** emergency room visits for children under 5 in 2025 recorded in the NEISS database.",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) AS er_visits_under_5_2025 FROM neiss WHERE age < 5 AND strftime(treatment_date, '%Y') = '2025';"
+   },
+   "result": "{\"columns\": [\"er_visits_under_5_2025\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "er_visits_under_5_2025"
+  ],
+  "rows": [
+   [
+    33344
+   ]
+  ],
+  "truncated": false,
+  "sql": "SELECT count(*) AS er_visits_under_5_2025 FROM neiss WHERE age < 5 AND strftime(treatment_date, '%Y') = '2025';"
+ },
+ "chart": null,
+ "caveats": []
+}

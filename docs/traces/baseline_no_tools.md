@@ -1,0 +1,37 @@
+# Same model, no tools, no system prompt
+
+Generated 2026-11-08 21:00 UTC by `build/baseline_no_tools.py`, model `vertex_ai/gemini-3.5-flash-lite`.
+
+## How many ER visits were there for children under 5 in 2025?
+
+I do not have access to real-time data or statistics for the year 2025, as my knowledge is current up to January 2025 and I cannot browse live healthcare databases. To find the most up-to-date emergency room visit statistics for children under 5, please check reports from the Centers for Disease Control and Prevention (CDC), the National Center for Health Statistics (NCHS), or the Healthcare Cost and Utilization Project (HCUP).
+
+## Which products send the most adults 65+ to the ER in 2025, and have any been recalled?
+
+I do not have access to real-time data, specific statistics for the year 2025, or live consumer product safety databases. Because my knowledge cuts off before 2025 and I cannot browse current emergency room admission data or active recall notices, I cannot provide the specific products responsible for the most ER visits for adults aged 65 and older this year.
+
+To find the most up-to-date and accurate information regarding ER injury statistics and product recalls for older adults, I recommend checking the following official resources:
+
+*   **Consumer Product Safety Commission (CPSC):** You can visit [SaferProducts.gov](https://www.saferproducts.gov/) or [CPSC.gov](https://www.cpsc.gov/) to search current product recalls and reports of consumer product-related injuries. The CPSC tracks emergency room data through the National Electronic Injury Surveillance System (NEISS).
+*   **Centers for Disease Control and Prevention (CDC):** The CDC's [WISQARS](https://www.cdc.gov/injury/wisqars/) (Web-based Injury Statistics Query and Reporting System) provides data on nonfatal injury reports from emergency departments, often categorized by age group. 
+*   **Food and Drug Administration (FDA):** For recalls related to medical devices, foods, or pharmaceuticals—which frequently impact adults 65+—check the [FDA Recalls, Market Withdrawals, & Safety Alerts](https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts) page.
+
+## How do injuries on stairs compare for children under 5 and adults 65+ in 2025?
+
+I do not have access to real-time data or specific public health statistics for the year 2025, as my knowledge cutoff is January 2025 and I do not have live internet access to current epidemiological tracking systems. 
+
+However, looking at historical trends up through recent years, public health data from organizations like the CDC and the Consumer Product Safety Commission (CPSC) consistently highlight distinct patterns regarding stair-related injuries for these two vulnerable age groups:
+
+### 1. Children Under 5 Years Old
+* **Nature of Incidents:** Children under 5 frequently suffer stair injuries due to falls while playing, carrying objects, or tumbling down a flight of stairs (often involving infant walkers, though these are heavily regulated, or lack of safety gates). 
+* **Injury Types:** Head and neck injuries (including concussions and soft tissue damage) are very common in this age group because of their higher center of gravity and relative lack of coordination. 
+* **Severity:** While emergency room visits are high, the rate of fatal injuries from stairs for young children is generally lower compared to older adults, though serious traumatic brain injuries do occur.
+
+### 2. Adults 65 and Older
+* **Nature of Incidents:** For older adults, stair falls are frequently related to issues with balance, vision, dizziness, weakness, or rushing. They are more likely to fall *down* the stairs, but falling *up* or tripping on the threshold is also common.
+* **Injury Types:** Older adults are significantly more prone to severe orthopedic trauma, particularly **hip fractures**, wrist fractures, and severe head trauma (such as subdural hematomas). 
+* **Severity:** Stair falls in the 65+ demographic carry a drastically higher risk of hospitalization, long-term functional decline, loss of independence, and mortality. Falls are a leading cause of accidental death in older adults, and stairs represent one of the most hazardous environments in the home.
+
+***
+
+*If you are looking for specific 2025 public health reports, I recommend checking databases from the CDC's WISQARS (Web-based Injury Statistics Query and Reporting System) or the National Safety Council.*

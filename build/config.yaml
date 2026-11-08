@@ -198,3 +198,63 @@ product_codes:
   # NEISS files used only for the coverage check
   coverage_tsvs:
     - "data/raw/neiss/neiss2025.tsv"
+
+# ---------------------------------------------------------------- agent (app.py)
+# Read by build/build_agent_context.py (offline) and detective/config.py (runtime).
+agent:
+  model: "vertex_ai/gemini-3.5-flash-lite"   # same model as the course starter
+  vertex_location: "global"                  # Vertex AI via gcloud ADC; no API key
+  max_turns: 8
+  max_rows: 200                  # run_sql row cap
+  sql_timeout_s: 20              # run_sql interrupts slower queries
+  request_timeout_s: 240         # whole /chat turn; graders wait at most 5 minutes
+  db_path: "data/processed/injuries.duckdb"
+  allowed_dir: "data/processed"  # the only directory DuckDB may read
+  context_json: "data/processed/agent_context.json"
+  system_prompt: "data/processed/system_prompt.md"
+  frontend: "frontend/index.html"
+  mode_env: "AGENT_MODE"         # AGENT_MODE=plain -> README baseline agent
+  chart_max_rows: 25
+  recall_limit: 10
+  # Raw NEISS column name -> neiss_cases expression, for plain mode's `neiss` view
+  # (what an agent sees if it loads the yearly TSVs directly).
+  plain_neiss_columns:
+    CPSC_Case_Number: case_id
+    Treatment_Date: treatment_date
+    Age: age_raw
+    Sex: sex
+    Race: race
+    Other_Race: race_other
+    Hispanic: hispanic
+    Body_Part: body_part
+    Diagnosis: diagnosis
+    Other_Diagnosis: diagnosis_other
+    Body_Part_2: body_part_2
+    Diagnosis_2: diagnosis_2
+    Other_Diagnosis_2: diagnosis_2_other
+    Disposition: disposition
+    Location: location
+    Fire_Involvement: fire_involvement
+    Product_1: product_1
+    Product_2: "coalesce(product_2, 0)"
+    Product_3: "coalesce(product_3, 0)"
+    Alcohol: alcohol
+    Drug: drug
+    Narrative_1: narrative
+    Stratum: stratum
+    PSU: psu
+    Weight: weight
+  traces_dir: "docs/traces"
+  # README comparison (build/run_readme_cases.py): each case isolates one cause.
+  readme_cases:
+    - id: under5_age_filter
+      question: "How many ER visits were there for children under 5 in 2025?"
+      expected: "1,469,070 estimated visits (57,638 sample cases); Age < 5 gives 856,149"
+    - id: product_ranking_weights
+      question: "Which products send the most people to the ER in 2025?"
+      expected: "Floors 3,079,996; stairs 1,310,287; beds 1,133,481 (weighted, any slot)"
+  # README sample queries (build/baseline_no_tools.py + tests/questions.yaml)
+  sample_questions:
+    - "How many ER visits were there for children under 5 in 2025?"
+    - "Which products send the most adults 65+ to the ER in 2025, and have any been recalled?"
+    - "How do injuries on stairs compare for children under 5 and adults 65+ in 2025?"

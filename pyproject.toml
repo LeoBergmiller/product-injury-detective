@@ -4,7 +4,11 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "duckdb>=2.0.0",
+    "fastapi>=0.109.0",
+    "google-auth>=2.40",
+    "openai-agents[litellm]>=0.24",
     "pyyaml>=6.0.3",
+    "uvicorn>=0.27.0",
 ]
 
 [dependency-groups]

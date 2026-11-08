@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product-Injury Detective</title>
+<style>
+  :root {
+    --ink: #1d2433; --muted: #5d6677; --line: #dde1e8; --bg: #f6f7f9; --card: #fff;
+    --accent: #b4442a; --accent-soft: #fbeee9; --bar: #2f6f8f; --warn: #8a5a00;
+    --warn-bg: #fff6e0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+         color: var(--ink); background: var(--bg); }
+  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+  .hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; padding: 26px 0 20px; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.01em; }
+  h1 span { color: var(--accent); }
+  .lede { margin: 0 0 10px; color: var(--muted); }
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fact { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .fact b { display: block; font-size: 18px; }
+  .fact small { color: var(--muted); }
+  .how { font-size: 14px; color: var(--muted); }
+  .how ol { margin: 6px 0 0; padding-left: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 18px; }
+  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px;
+          padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; color: var(--ink); }
+  .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
+  main { padding: 18px 0 140px; }
+  .msg { margin: 0 0 16px; }
+  .user { text-align: right; }
+  .user .bubble { display: inline-block; background: var(--ink); color: #fff;
+                  border-radius: 14px 14px 2px 14px; padding: 8px 14px; max-width: 80%; text-align: left; }
+  .answer { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .answer .text { white-space: pre-wrap; }
+  .answer a { color: var(--accent); }
+  .caveats { margin: 12px 0 0; padding: 8px 12px; background: var(--warn-bg); color: var(--warn);
+             border-radius: 8px; font-size: 13px; }
+  .caveats ul { margin: 0; padding-left: 18px; }
+  .chart { margin: 14px 0 4px; overflow-x: auto; }
+  .chart svg { display: block; max-width: 100%; }
+  .chart text { font-size: 11px; fill: var(--muted); }
+  .tablewrap { margin-top: 12px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  th { position: sticky; top: 0; background: #eef1f5; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  details { margin-top: 12px; font-size: 13px; }
+  summary { cursor: pointer; color: var(--muted); }
+  .call { border-left: 3px solid var(--line); margin: 8px 0; padding: 4px 10px; }
+  .call.rejected { border-color: var(--accent); }
+  .call code, .call pre { font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  .call pre { white-space: pre-wrap; margin: 4px 0; max-height: 180px; overflow: auto; background: #f3f4f6; padding: 6px; border-radius: 4px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #eef1f5; color: var(--muted); }
+  form { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line); }
+  form .wrap { display: flex; gap: 8px; padding: 12px 20px; }
+  textarea { flex: 1; resize: none; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; height: 46px; }
+  button.send { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 0 18px; font: inherit; cursor: pointer; }
+  button.ghost { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; font: inherit; cursor: pointer; color: var(--muted); }
+  button:disabled { opacity: .5; cursor: wait; }
+  .thinking { color: var(--muted); font-style: italic; }
+  @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .facts { grid-template-columns: 1fr 1fr 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>Product-Injury <span>Detective</span></h1>
+        <p class="lede">Which everyday products send people to the emergency room, and have
+          any of them been recalled? Ask in plain English. The detective writes SQL over
+          U.S. Consumer Product Safety Commission data and shows its work.</p>
+        <p class="how"><b>For</b> parents, caregivers, and anyone looking after older adults
+          who want numbers, not anecdotes: compare children under 5 with adults 65+,
+          find the products behind the visits, and check for possible recalls.</p>
+      </div>
+      <div class="how">
+        <div class="facts">
+          <div class="fact"><b>2019-2025</b><small>NEISS ER cases, weighted to national estimates</small></div>
+          <div class="fact"><b>10,082</b><small>CPSC recalls</small></div>
+          <div class="fact"><b>71,858</b><small>SaferProducts.gov reports</small></div>
+        </div>
+        <ol>
+          <li>Ask about a product, an age group, or a year.</li>
+          <li>Read the answer, the table and the chart.</li>
+          <li>Open "How I found this" to see every query.</li>
+        </ol>
+        It counts ER visits; it can't tell you per-use risk, brands in NEISS, or causes.
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+</header>
+
+<main class="wrap" id="log"></main>
+
+<form id="form">
+  <div class="wrap">
+    <textarea id="input" placeholder="e.g. Which products send the most adults 65+ to the ER?" autofocus></textarea>
+    <button class="send" id="send" type="submit">Ask</button>
+    <button class="ghost" id="clear" type="button" title="Start a new conversation">New</button>
+  </div>
+</form>
+
+<script>
+  // One request per message: POST /chat returns
+  // { response, session_id, tool_calls[{name,args,result,agent}], table?, chart?, caveats? }.
+  const EXAMPLES = [
+    "How many ER visits were there for children under 5 in 2025?",
+    "Which products send the most adults 65+ to the ER, and have any been recalled?",
+    "How do stair injuries compare for children under 5 and adults 65+ in 2025?",
+    "What body parts are injured most on trampolines?",
+    "Which brand of stroller is most dangerous?",
+  ];
+  let sessionId = null;
+  const log = document.getElementById("log");
+  const input = document.getElementById("input");
+  const send = document.getElementById("send");
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const linkify = (s) => esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/(https?:\/\/[^\s)<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  const fmt = (v) => typeof v === "number"
+    ? (Number.isInteger(v) || Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: 2 }))
+    : esc(v === null ? "" : v);
+  const short = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "k" : String(Math.round(n));
+
+  for (const q of EXAMPLES) {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.textContent = q;
+    b.onclick = () => ask(q);
+    document.getElementById("chips").appendChild(b);
+  }
+
+  function renderTable(t) {
+    if (!t || !t.rows?.length) return "";
+    const head = t.columns.map((c) => `<th>${esc(c)}</th>`).join("");
+    const body = t.rows.map((r) => "<tr>" + r.map((v) =>
+      `<td class="${typeof v === "number" ? "num" : ""}">${fmt(v)}</td>`).join("") + "</tr>").join("");
+    return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
+      + (t.truncated ? `<small>Showing the first ${t.rows.length} rows.</small>` : "");
+  }
+
+  function renderBar(c) {
+    const rowH = 22, labelW = 230, w = 760, plotW = w - labelW - 70;
+    const max = Math.max(...c.data.map((d) => d.y)) || 1;
+    const h = c.data.length * rowH + 24;
+    const bars = c.data.map((d, i) => {
+      const y = i * rowH + 4, bw = Math.max(1, (d.y / max) * plotW);
+      const label = String(d.x).length > 34 ? String(d.x).slice(0, 33) + "…" : String(d.x);
+      return `<text x="${labelW - 6}" y="${y + 14}" text-anchor="end">${esc(label)}</text>
+        <rect x="${labelW}" y="${y}" width="${bw}" height="${rowH - 6}" rx="3" fill="var(--bar)"><title>${esc(d.x)}: ${fmt(d.y)}</title></rect>
+        <text x="${labelW + bw + 5}" y="${y + 14}">${short(d.y)}</text>`;
+    }).join("");
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(c.y)} by ${esc(c.x)}">${bars}
+      <text x="${labelW}" y="${h - 4}">${esc(c.y)}</text></svg>`;
+  }
+
+  function renderLine(c) {
+    const w = 760, h = 260, l = 60, r = 150, t = 12, b = 30;
+    const xs = [...new Set(c.data.map((d) => d.x))].sort((a, b) => a - b);
+    const groups = {};
+    for (const d of c.data) (groups[d.series ?? c.y] ??= []).push(d);
+    const max = Math.max(...c.data.map((d) => d.y)) || 1;
+    const px = (x) => l + (xs.length === 1 ? 0 : (xs.indexOf(x) / (xs.length - 1)) * (w - l - r));
+    const py = (y) => t + (1 - y / max) * (h - t - b);
+    const colors = ["#2f6f8f", "#b4442a", "#5f8f3e", "#7a4f9a", "#c08a1e", "#3b3b3b"];
+    let svg = "";
+    for (let k = 0; k <= 4; k++) {
+      const v = (max * k) / 4;
+      svg += `<line x1="${l}" x2="${w - r}" y1="${py(v)}" y2="${py(v)}" stroke="#e6e8ec"/><text x="${l - 6}" y="${py(v) + 4}" text-anchor="end">${short(v)}</text>`;
+    }
+    for (const x of xs) svg += `<text x="${px(x)}" y="${h - 10}" text-anchor="middle">${esc(x)}</text>`;
+    Object.entries(groups).forEach(([name, pts], i) => {
+      pts.sort((a, b) => a.x - b.x);
+      const col = colors[i % colors.length];
+      svg += `<polyline fill="none" stroke="${col}" stroke-width="2.5" points="${pts.map((p) => `${px(p.x)},${py(p.y)}`).join(" ")}"/>`;
+      svg += pts.map((p) => `<circle cx="${px(p.x)}" cy="${py(p.y)}" r="3.5" fill="${col}"><title>${esc(name)} ${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join("");
+      const last = pts[pts.length - 1];
+      const nm = String(name).length > 22 ? String(name).slice(0, 21) + "…" : name;
+      svg += `<text x="${px(last.x) + 8}" y="${py(last.y) + 4}" fill="${col}" style="fill:${col}">${esc(nm)}</text>`;
+    });
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(c.y)} by year">${svg}</svg>`;
+  }
+
+  function renderCalls(calls) {
+    if (!calls?.length) return "";
+    const items = calls.map((c, i) => {
+      let result = c.result, rejected = false;
+      try { const p = JSON.parse(c.result); rejected = !!p.rejected; result = JSON.stringify(p, null, 1); } catch (e) {}
+      const args = c.name === "run_sql" ? c.args.query : JSON.stringify(c.args);
+      return `<div class="call ${rejected ? "rejected" : ""}">
+        <span class="tag">${i + 1}</span> <b>${esc(c.name)}</b> <span class="tag">${esc(c.agent)}</span>
+        ${rejected ? '<span class="tag" style="color:var(--accent)">guardrail rejected</span>' : ""}
+        <pre>${esc(args)}</pre><details><summary>result</summary><pre>${esc(result)}</pre></details></div>`;
+    }).join("");
+    return `<details><summary>How I found this (${calls.length} tool call${calls.length > 1 ? "s" : ""})</summary>${items}</details>`;
+  }
+
+  function addUser(text) {
+    const d = document.createElement("div");
+    d.className = "msg user"; d.innerHTML = `<div class="bubble">${esc(text)}</div>`;
+    log.appendChild(d); return d;
+  }
+
+  async function ask(text) {
+    text = text.trim();
+    if (!text) return;
+    addUser(text);
+    input.value = "";
+    const a = document.createElement("div");
+    a.className = "msg answer"; a.innerHTML = '<span class="thinking">Querying the data…</span>';
+    log.appendChild(a); a.scrollIntoView({ behavior: "smooth" });
+    send.disabled = true;
+    try {
+      const res = await fetch("/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, session_id: sessionId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      sessionId = data.session_id;
+      const chart = data.chart ? `<div class="chart">${data.chart.type === "line" ? renderLine(data.chart) : renderBar(data.chart)}</div>` : "";
+      const cav = data.caveats?.length ? `<div class="caveats"><ul>${data.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : "";
+      a.innerHTML = `<div class="text">${linkify(data.response)}</div>${cav}${chart}${renderTable(data.table)}${renderCalls(data.tool_calls)}`;
+    } catch (e) {
+      a.innerHTML = `<span class="thinking">Request failed: ${esc(e.message)}</span>`;
+    } finally {
+      send.disabled = false; input.focus();
+    }
+  }
+
+  document.getElementById("form").onsubmit = (e) => { e.preventDefault(); ask(input.value); };
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); } });
+  document.getElementById("clear").onclick = async () => {
+    if (sessionId) await fetch("/clear?session_id=" + encodeURIComponent(sessionId), { method: "POST" });
+    sessionId = null; log.innerHTML = "";
+  };
+</script>
+</body>
+</html>
