@@ -1,0 +1,254 @@
+{
+ "case": "product_ranking_slot1",
+ "question": "Which products send the most people to the ER in 2025?",
+ "mode": "plain",
+ "run": 3,
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "wrong: Product_1 only, weighted (floors 2,199,379)",
+ "response": "Based on the 2025 NEISS emergency department data, here are the top products/consumer environments sending the most people to the ER (ranked by estimated national injury totals using NEISS statistical weights):\n\n1. **Floors or flooring materials** (Code 1807): ~2,199,378 estimated injuries (47,267 reported cases)\n2. **Stairs or steps** (Code 1842): ~1,228,377 estimated injuries (29,531 reported cases)\n3. **Beds or bedframes** (Code 4076): ~999,656 estimated injuries (25,989 reported cases)\n4. **Chairs, other or not specified** (Code 4074): ~433,183 estimated injuries (10,818 reported cases)\n5. **Bicycles or accessories** (Code 5040): ~412,756 estimated injuries (10,456 reported cases)\n6. **Bathtubs or showers** (Code 611): ~369,916 estimated injuries (8,647 reported cases)\n7. **Exercise (activity/apparel without equipment)** (Code 3299): ~361,889 estimated injuries (8,476 reported cases)\n8. **Basketball** (Code 1205): ~358,220 estimated injuries (10,306 reported cases)\n9. **Knives, not elsewhere classified** (Code 464): ~342,503 estimated injuries (7,034 reported cases)\n10. **Football** (Code 1211): ~307,911 estimated injuries (9,754 reported cases)\n\n*(Note: NEISS tracks injuries associated with structural building materials and common household items alongside traditional consumer products).*",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT \n    n.product_code, \n    p.title AS product_name, \n    COUNT(*) AS er_visits,\n    ROUND(SUM(n.weight), 1) AS estimated_total_injuries\nFROM neiss n\nLEFT JOIN product_codes p ON n.product_code = p.code\nWHERE EXTRACT(YEAR FROM CAST(n.treatment_date AS DATE)) = 2025\nGROUP BY n.product_code, p.title\nORDER BY estimated_total_injuries DESC\nLIMIT 15;"
+   },
+   "result": "{\"error\": \"Binder Error: Values list \\\"n\\\" does not have a column named \\\"product_code\\\"\"}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'neiss';"
+   },
+   "result": "{\"columns\": [\"column_name\"], \"rows\": [[\"CPSC_Case_Number\"], [\"Treatment_Date\"], [\"Age\"], [\"Sex\"], [\"Race\"], [\"Other_Race\"], [\"Hispanic\"], [\"Body_Part\"], [\"Diagnosis\"], [\"Other_Diagnosis\"], [\"Body_Part_2\"], [\"Diagnosis_2\"], [\"Other_Diagnosis_2\"], [\"Disposition\"], [\"Location\"], [\"Fire_Involvement\"], [\"Product_1\"], [\"Product_2\"], [\"Product_3\"], [\"Alcohol\"], [\"Drug\"], [\"Narrative_1\"], [\"Stratum\"], [\"PSU\"], [\"Weight\"]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT \n    n.Product_1 AS product_code, \n    p.title AS product_name, \n    COUNT(*) AS reported_cases,\n    ROUND(SUM(n.Weight), 1) AS estimated_total_injuries\nFROM neiss n\nLEFT JOIN product_codes p ON CAST(n.Product_1 AS VARCHAR) = CAST(p.code AS VARCHAR)\nWHERE EXTRACT(YEAR FROM CAST(n.Treatment_Date AS DATE)) = 2025\nGROUP BY n.Product_1, p.title\nORDER BY estimated_total_injuries DESC\nLIMIT 15;"
+   },
+   "result": "{\"error\": \"Binder Error: Values list \\\"p\\\" does not have a column named \\\"code\\\"\"}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'product_codes';"
+   },
+   "result": "{\"columns\": [\"column_name\"], \"rows\": [[\"product_code\"], [\"product_title\"], [\"product_code\"], [\"product_title\"], [\"is_placeholder\"], [\"is_catch_all\"], [\"source_page\"], [\"source\"]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT column_name, table_name FROM information_schema.columns WHERE column_name ILIKE '%code%';"
+   },
+   "result": "{\"columns\": [\"column_name\", \"table_name\"], \"rows\": [[\"product_code\", \"product_codes\"], [\"product_code\", \"neiss_case_products\"], [\"code\", \"neiss_codebook\"], [\"product_code\", \"product_codes\"], [\"product_code\", \"product_code_stability\"], [\"neiss_code\", \"product_recall_xwalk\"], [\"neiss_code\", \"safer_category_xwalk\"], [\"product_code\", \"v_case_products\"], [\"product_code\", \"v_product_estimates\"], [\"neiss_code\", \"v_recalls_for_product\"], [\"neiss_code\", \"v_safer_incidents_neiss\"], [\"product_code\", \"v_top_products\"]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT * FROM product_codes LIMIT 2;"
+   },
+   "result": "{\"columns\": [\"product_code\", \"product_title\"], \"rows\": [[102, \"Wringer washing machines\"], [106, \"Electric clothes dryers without washers\"]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT \n    n.Product_1 AS product_code, \n    p.product_title AS product_name, \n    COUNT(*) AS reported_cases,\n    ROUND(SUM(n.Weight), 1) AS estimated_total_injuries\nFROM neiss n\nLEFT JOIN product_codes p ON CAST(n.Product_1 AS VARCHAR) = CAST(p.product_code AS VARCHAR)\nWHERE EXTRACT(YEAR FROM CAST(n.Treatment_Date AS DATE)) = 2025\nGROUP BY n.Product_1, p.product_title\nORDER BY estimated_total_injuries DESC\nLIMIT 15;"
+   },
+   "result": "{\"columns\": [\"product_code\", \"product_name\", \"reported_cases\", \"estimated_total_injuries\"], \"rows\": [[1807, \"Floors or flooring materials\", 47267, 2199378.8], [1842, \"Stairs or steps (excluding pull-down and folding stairs)\", 29531, 1228377.1], [4076, \"Beds or bedframes, other or not specified\", 25989, 999656.2], [4074, \"Chairs, other or not specified\", 10818, 433183.1], [5040, \"Bicycles or accessories (excluding mountain or all-terrain bicycles)\", 10456, 412756.0], [611, \"Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)\", 8647, 369915.6], [3299, \"Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)\", 8476, 361889.3], [1205, \"Basketball (activity, apparel or equipment)\", 10306, 358220.0], [464, \"Knives, not elsewhere classified\", 7034, 342503.4], [1211, \"Football (activity, apparel or equipment)\", 9754, 307911.0], [1884, \"Ceilings and walls (interior part of completed structure)\", 7869, 305552.1], [4057, \"Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)\", 7168, 262746.5], [1893, \"Doors, other or not specified\", 6949, 262289.5], [1267, \"Soccer (activity, apparel or equipment)\", 8820, 260373.0], [679, \"Sofas, couches, davenports, divans or studio couches\", 6916, 227475.4]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "product_code",
+   "product_name",
+   "reported_cases",
+   "estimated_total_injuries"
+  ],
+  "rows": [
+   [
+    1807,
+    "Floors or flooring materials",
+    47267,
+    2199378.8
+   ],
+   [
+    1842,
+    "Stairs or steps (excluding pull-down and folding stairs)",
+    29531,
+    1228377.1
+   ],
+   [
+    4076,
+    "Beds or bedframes, other or not specified",
+    25989,
+    999656.2
+   ],
+   [
+    4074,
+    "Chairs, other or not specified",
+    10818,
+    433183.1
+   ],
+   [
+    5040,
+    "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
+    10456,
+    412756.0
+   ],
+   [
+    611,
+    "Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)",
+    8647,
+    369915.6
+   ],
+   [
+    3299,
+    "Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)",
+    8476,
+    361889.3
+   ],
+   [
+    1205,
+    "Basketball (activity, apparel or equipment)",
+    10306,
+    358220.0
+   ],
+   [
+    464,
+    "Knives, not elsewhere classified",
+    7034,
+    342503.4
+   ],
+   [
+    1211,
+    "Football (activity, apparel or equipment)",
+    9754,
+    307911.0
+   ],
+   [
+    1884,
+    "Ceilings and walls (interior part of completed structure)",
+    7869,
+    305552.1
+   ],
+   [
+    4057,
+    "Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)",
+    7168,
+    262746.5
+   ],
+   [
+    1893,
+    "Doors, other or not specified",
+    6949,
+    262289.5
+   ],
+   [
+    1267,
+    "Soccer (activity, apparel or equipment)",
+    8820,
+    260373.0
+   ],
+   [
+    679,
+    "Sofas, couches, davenports, divans or studio couches",
+    6916,
+    227475.4
+   ]
+  ],
+  "truncated": false,
+  "sql": "SELECT \n    n.Product_1 AS product_code, \n    p.product_title AS product_name, \n    COUNT(*) AS reported_cases,\n    ROUND(SUM(n.Weight), 1) AS estimated_total_injuries\nFROM neiss n\nLEFT JOIN product_codes p ON CAST(n.Product_1 AS VARCHAR) = CAST(p.product_code AS VARCHAR)\nWHERE EXTRACT(YEAR FROM CAST(n.Treatment_Date AS DATE)) = 2025\nGROUP BY n.Product_1, p.product_title\nORDER BY estimated_total_injuries DESC\nLIMIT 15;"
+ },
+ "chart": {
+  "type": "bar",
+  "x": "product_name",
+  "y": "estimated_total_injuries",
+  "series": null,
+  "data": [
+   {
+    "x": "Floors or flooring materials",
+    "y": 2199378.8,
+    "series": null
+   },
+   {
+    "x": "Stairs or steps (excluding pull-down and folding stairs)",
+    "y": 1228377.1,
+    "series": null
+   },
+   {
+    "x": "Beds or bedframes, other or not specified",
+    "y": 999656.2,
+    "series": null
+   },
+   {
+    "x": "Chairs, other or not specified",
+    "y": 433183.1,
+    "series": null
+   },
+   {
+    "x": "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
+    "y": 412756.0,
+    "series": null
+   },
+   {
+    "x": "Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)",
+    "y": 369915.6,
+    "series": null
+   },
+   {
+    "x": "Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)",
+    "y": 361889.3,
+    "series": null
+   },
+   {
+    "x": "Basketball (activity, apparel or equipment)",
+    "y": 358220.0,
+    "series": null
+   },
+   {
+    "x": "Knives, not elsewhere classified",
+    "y": 342503.4,
+    "series": null
+   },
+   {
+    "x": "Football (activity, apparel or equipment)",
+    "y": 307911.0,
+    "series": null
+   },
+   {
+    "x": "Ceilings and walls (interior part of completed structure)",
+    "y": 305552.1,
+    "series": null
+   },
+   {
+    "x": "Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)",
+    "y": 262746.5,
+    "series": null
+   },
+   {
+    "x": "Doors, other or not specified",
+    "y": 262289.5,
+    "series": null
+   },
+   {
+    "x": "Soccer (activity, apparel or equipment)",
+    "y": 260373.0,
+    "series": null
+   },
+   {
+    "x": "Sofas, couches, davenports, divans or studio couches",
+    "y": 227475.4,
+    "series": null
+   }
+  ]
+ },
+ "caveats": []
+}

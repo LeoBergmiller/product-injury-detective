@@ -1,0 +1,66 @@
+{
+ "case": "under5_age_filter",
+ "question": "How many ER visits were there for children under 5 in 2025?",
+ "mode": "plain",
+ "run": 4,
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "wrong: raw Age < 5, unweighted rows (33,344)",
+ "response": "There were **33,344** emergency room visits recorded in the NEISS database for children under 5 years old in 2025. \n\n*(Note: In the NEISS dataset, age is recorded in months for infants under 1 year old, and in full years for children 1 and older; `Age < 5` correctly captures all children under 5, including infants.)*",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE age < 5 AND year = 2025"
+   },
+   "result": "{\"error\": \"Binder Error: Referenced column \\\"year\\\" not found in FROM clause!\"}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'neiss'"
+   },
+   "result": "{\"columns\": [\"column_name\"], \"rows\": [[\"CPSC_Case_Number\"], [\"Treatment_Date\"], [\"Age\"], [\"Sex\"], [\"Race\"], [\"Other_Race\"], [\"Hispanic\"], [\"Body_Part\"], [\"Diagnosis\"], [\"Other_Diagnosis\"], [\"Body_Part_2\"], [\"Diagnosis_2\"], [\"Other_Diagnosis_2\"], [\"Disposition\"], [\"Location\"], [\"Fire_Involvement\"], [\"Product_1\"], [\"Product_2\"], [\"Product_3\"], [\"Alcohol\"], [\"Drug\"], [\"Narrative_1\"], [\"Stratum\"], [\"PSU\"], [\"Weight\"]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE Age < 5 AND EXTRACT(YEAR FROM CAST(Treatment_Date AS DATE)) = 2025"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT min(Treatment_Date), max(Treatment_Date) FROM neiss"
+   },
+   "result": "{\"columns\": [\"min(Treatment_Date)\", \"max(Treatment_Date)\"], \"rows\": [[\"2019-01-01\", \"2025-12-31\"]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE Age < 5 AND Treatment_Date >= '2025-01-01' AND Treatment_Date <= '2025-12-31'"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "count_star()"
+  ],
+  "rows": [
+   [
+    33344
+   ]
+  ],
+  "truncated": false,
+  "sql": "SELECT count(*) FROM neiss WHERE Age < 5 AND Treatment_Date >= '2025-01-01' AND Treatment_Date <= '2025-12-31'"
+ },
+ "chart": null,
+ "caveats": []
+}

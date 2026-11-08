@@ -1,0 +1,50 @@
+{
+ "case": "under5_age_filter",
+ "question": "How many ER visits were there for children under 5 in 2025?",
+ "mode": "plain",
+ "run": 1,
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "wrong: raw Age < 5, unweighted rows (33,344)",
+ "response": "Based on the NEISS emergency-department injury records, there were **33,344** ER visits recorded for children under 5 years old in the year 2025. \n\n*(Note: Depending on how \"children under 5\" is interpreted, this includes infants and toddlers where `age < 5`, i.e., ages 0 through 4).*",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE age < 5 AND strftime(treatment_date, '%Y') = '2025'"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT min(treatment_date), max(treatment_date), count(*) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025'"
+   },
+   "result": "{\"columns\": [\"min(treatment_date)\", \"max(treatment_date)\", \"count_star()\"], \"rows\": [[\"2025-01-01\", \"2025-12-31\", 410201]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE age < 5 AND strftime(treatment_date, '%Y') = '2025'"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "count_star()"
+  ],
+  "rows": [
+   [
+    33344
+   ]
+  ],
+  "truncated": false,
+  "sql": "SELECT count(*) FROM neiss WHERE age < 5 AND strftime(treatment_date, '%Y') = '2025'"
+ },
+ "chart": null,
+ "caveats": []
+}

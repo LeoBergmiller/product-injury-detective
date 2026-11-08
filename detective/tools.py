@@ -16,8 +16,15 @@ from agents import (
 
 from detective.config import AgentConfig
 from detective.db import Database, guardrail_message, to_json
+from detective.recall_match import (
+    belongs_elsewhere,
+    keyword_nouns,
+    plausible_for_keywords,
+    plausible_for_product,
+    product_nouns,
+    specific_phrases,
+)
 
-CONFIDENCE_ORDER = "CASE confidence WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END"
 
 
 @dataclass
@@ -27,6 +34,7 @@ class RunState:
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     sql_results: list[dict[str, Any]] = field(default_factory=list)
     recall_results: list[dict[str, Any]] = field(default_factory=list)
+    ungrounded: list[str] = field(default_factory=list)
 
     def record(self, name: str, args: dict[str, Any], result: str, agent: str) -> None:
         self.tool_calls.append(
@@ -166,75 +174,111 @@ def make_detective_tools(
             return to_json({"error": f"Unknown kind '{kind}'.", "kinds": kinds})
         return to_json({"kind": k, "codes": lookup})
 
+    titles = {p["code"]: p["title"] for p in ctx["products"]}
+    specific = specific_phrases(titles)
+
+    def _candidates(likes: list[str], year_sql: str, year_par: list[Any]) -> list[
+        dict[str, Any]
+    ]:
+        where = " OR ".join("search_text LIKE ?" for _ in likes)
+        return db.rows(
+            f"""SELECT recall_id, recall_date, title, hazards_text, url,
+                       false AS audited, NULL AS confidence
+                FROM recalls WHERE ({where}){year_sql}
+                ORDER BY recall_date DESC LIMIT 400""",
+            [*likes, *year_par],
+        )
+
+    def _names(ids: list[int]) -> dict[int, list[str]]:
+        if not ids:
+            return {}
+        out: dict[int, list[str]] = {}
+        for r in db.rows(
+            "SELECT recall_id, name FROM recall_products "
+            "WHERE recall_id IN (SELECT unnest(?::INTEGER[])) AND name IS NOT NULL",
+            [ids],
+        ):
+            out.setdefault(r["recall_id"], []).append(r["name"])
+        return out
+
     @function_tool
     def search_recalls(
         keywords: str, product_code: int | None = None, since_year: int | None = None
     ) -> str:
-        """Find CPSC recalls that may match a product. Returns titles, hazards, URLs.
+        """Find CPSC recalls whose recalled product plausibly is the given product.
 
-        Every result is a POSSIBLE match from text search, not a verified link.
+        Unrelated text matches (e.g. floor lamps for flooring) are dropped. Every
+        result is a "possible match (not reviewed)". If none remain, say "no reviewed
+        recall link found".
 
         Args:
             keywords: Product words, comma-separated, singular,
                 e.g. 'bunk bed, loft bed'.
-            product_code: Optional NEISS code; uses the prebuilt crosswalk first.
+            product_code: Optional NEISS code; then the recalled product must match
+                that code's title.
             since_year: Optional earliest recall year, e.g. 2019.
         """
-        limit = cfg.recall_limit
-        out: dict[str, Any] = {"note": "possible matches from text search"}
         year_sql = " AND year(recall_date) >= ?" if since_year else ""
         year_par = [since_year] if since_year else []
+        terms = keyword_nouns(keywords)
         if product_code is not None:
-            xw = db.rows(
+            title = titles.get(product_code)
+            if title is None:
+                return to_json({"error": f"Unknown product_code {product_code}. "
+                                "Use lookup_codes(kind='product')."})
+            nouns = product_nouns(title)
+            target = f"NEISS {product_code} ({title})"
+            cands = db.rows(
                 f"""SELECT recall_id, recall_date, recall_title AS title, hazards_text,
-                           url,
-                           'crosswalk (' || confidence || ' confidence)' AS matched,
-                           audited
+                           url, audited, confidence
                     FROM v_recalls_for_product
-                    WHERE neiss_code = ? AND recall_id IS NOT NULL{year_sql}
-                    ORDER BY {CONFIDENCE_ORDER}, recall_date DESC LIMIT ?""",
-                [product_code, *year_par, limit],
+                    WHERE neiss_code = ? AND recall_id IS NOT NULL{year_sql}""",
+                [product_code, *year_par],
             )
-            if xw:
-                out["source"] = "product_recall_xwalk"
-                out["recalls"] = xw
-            else:
-                out["crosswalk"] = (
-                    f"code {product_code} has no crosswalk rows (only the top-50 "
-                    "codes per age scope are pre-matched); used keywords instead"
-                )
-        if "recalls" not in out:
-            terms = [
-                t.strip().lower()
-                for t in re.split(r"[,;]|\bor\b", keywords)
-                if len(t.strip()) >= 3
-            ][:6]
+            cands += _candidates([f"%{n}%" for n in sorted(nouns)], year_sql, year_par)
+        else:
             if not terms:
                 return to_json({"error": "Give at least one keyword of 3+ letters."})
-            likes = [f"%{t}%" for t in terms]
-            any_text = " OR ".join("search_text LIKE ?" for _ in likes)
-            any_title = " OR ".join("lower(title) LIKE ?" for _ in likes)
-            where = f"({any_text}){year_sql}"
-            total = db.rows(
-                f"SELECT count(*) AS n FROM recalls WHERE {where}", [*likes, *year_par]
-            )[0]["n"]
-            out["source"] = "keyword search over recalls.search_text"
-            out["total_matches"] = total
-            out["recalls"] = db.rows(
-                f"""SELECT recall_id, recall_date, title, hazards_text, url,
-                           CASE WHEN {any_title} THEN 'keyword in title'
-                                ELSE 'keyword in recall text' END AS matched,
-                           false AS audited
-                    FROM recalls WHERE {where}
-                    ORDER BY ({any_title}) DESC, recall_date DESC LIMIT ?""",
-                [*likes, *likes, *year_par, *likes, limit],
+            target = f"keywords '{keywords}'"
+            cands = _candidates(
+                [f"%{' '.join(w)}%" for _, w in terms] + [f"%{h}%" for h, _ in terms],
+                year_sql, year_par,
             )
-        for r in out["recalls"]:
-            r["hazards_text"] = (r.get("hazards_text") or "")[:240]
-            r["link_status"] = (
-                "possible match (reviewed)" if r.pop("audited") else
-                "possible match (not reviewed)"
-            )
+        seen: dict[int, dict[str, Any]] = {}
+        for c in cands:
+            seen.setdefault(c["recall_id"], c)
+        names = _names(list(seen))
+        kept = []
+        for rid, c in seen.items():
+            pn = names.get(rid, [])
+            if c["audited"]:
+                why = "reviewed crosswalk link"
+            elif product_code is not None:
+                noun = plausible_for_product(c["title"], pn, nouns)
+                other = belongs_elsewhere(c["title"], pn, product_code, specific)
+                why = noun and not other and f"recalled product is a '{noun}'"
+            else:
+                kw = plausible_for_keywords(c["title"], pn, terms)
+                why = kw and f"recalled product is a '{kw}'"
+            if why:
+                kept.append({
+                    "recall_id": rid, "recall_date": c["recall_date"],
+                    "title": c["title"], "url": c["url"],
+                    "hazards_text": (c.get("hazards_text") or "")[:240],
+                    "why": why,
+                    "link_status": "possible match (reviewed)" if c["audited"]
+                    else "possible match (not reviewed)",
+                })
+        kept.sort(key=lambda r: str(r["recall_date"]), reverse=True)
+        out: dict[str, Any] = {
+            "target": target,
+            "candidates_checked": len(seen),
+            "excluded_unrelated": len(seen) - len(kept),
+            "recalls": kept[: cfg.recall_limit],
+            "more": max(0, len(kept) - cfg.recall_limit),
+        }
+        if not kept:
+            out["message"] = f"no reviewed recall link found for {target}"
         return to_json(out)
 
     return [describe_data, lookup_codes, make_run_sql(db, guarded=True), search_recalls]

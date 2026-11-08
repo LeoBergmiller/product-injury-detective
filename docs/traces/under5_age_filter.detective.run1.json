@@ -1,0 +1,110 @@
+{
+ "case": "under5_age_filter",
+ "question": "How many ER visits were there for children under 5 in 2025?",
+ "mode": "detective",
+ "run": 1,
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "correct: age_years < 5, weighted (1,469,070)",
+ "response": "In 2025, there were an estimated 1,469,070 injury-related ER visits (from a sample of 57,638 cases) for children under 5.\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_years < 5"
+   },
+   "result": "{\"columns\": [\"n_cases\", \"est_visits\"], \"rows\": [[57638, 1469070.0]], \"truncated\": false}",
+   "agent": "Product-Injury Detective"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT age_group, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_group IN ('0-4', '5-14', '15-24', '25-44', '45-64', '65+') GROUP BY age_group ORDER BY est_visits DESC"
+   },
+   "result": "{\"columns\": [\"age_group\", \"n_cases\", \"est_visits\"], \"rows\": [[\"65+\", 98274, 4837571.0], [\"25-44\", 62219, 2943375.0], [\"45-64\", 59533, 2871821.0], [\"5-14\", 81375, 2297600.0], [\"15-24\", 51117, 2064131.0], [\"0-4\", 57638, 1469070.0]], \"truncated\": false}",
+   "agent": "Product-Injury Detective"
+  }
+ ],
+ "table": {
+  "columns": [
+   "age_group",
+   "n_cases",
+   "est_visits"
+  ],
+  "rows": [
+   [
+    "65+",
+    98274,
+    4837571.0
+   ],
+   [
+    "25-44",
+    62219,
+    2943375.0
+   ],
+   [
+    "45-64",
+    59533,
+    2871821.0
+   ],
+   [
+    "5-14",
+    81375,
+    2297600.0
+   ],
+   [
+    "15-24",
+    51117,
+    2064131.0
+   ],
+   [
+    "0-4",
+    57638,
+    1469070.0
+   ]
+  ],
+  "truncated": false,
+  "sql": "SELECT age_group, COUNT(*) AS n_cases, ROUND(SUM(weight)) AS est_visits FROM neiss_cases WHERE year = 2025 AND age_group IN ('0-4', '5-14', '15-24', '25-44', '45-64', '65+') GROUP BY age_group ORDER BY est_visits DESC"
+ },
+ "chart": {
+  "type": "bar",
+  "x": "age_group",
+  "y": "est_visits",
+  "series": null,
+  "data": [
+   {
+    "x": "65+",
+    "y": 4837571.0,
+    "series": null
+   },
+   {
+    "x": "25-44",
+    "y": 2943375.0,
+    "series": null
+   },
+   {
+    "x": "45-64",
+    "y": 2871821.0,
+    "series": null
+   },
+   {
+    "x": "5-14",
+    "y": 2297600.0,
+    "series": null
+   },
+   {
+    "x": "15-24",
+    "y": 2064131.0,
+    "series": null
+   },
+   {
+    "x": "0-4",
+    "y": 1469070.0,
+    "series": null
+   }
+  ]
+ },
+ "caveats": [
+  "These are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data."
+ ]
+}

@@ -25,10 +25,17 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from detective.agent import Detective  # noqa: E402
 from detective.config import AgentConfig  # noqa: E402
+from detective.grounding import ungrounded_numbers  # noqa: E402
 
 LOG = logging.getLogger("test_questions")
 QUESTIONS = Path(__file__).with_name("questions.yaml")
 RESULTS_DIR = Path(__file__).with_name("results")
+
+
+PLAIN_VISITS = re.compile(
+    r"(?<!injury-related )(?<!injury related )\b(?:ER|emergency(?: room| department)?)"
+    r" visits", re.IGNORECASE
+)
 
 
 def check(q: dict[str, Any], out: dict[str, Any]) -> list[str]:
@@ -47,6 +54,27 @@ def check(q: dict[str, Any], out: dict[str, Any]) -> list[str]:
     for p in q.get("text_none", []):
         if re.search(p, text, re.IGNORECASE | re.DOTALL):
             fails.append(f"answer matches forbidden /{p}/")
+    real_calls = [c for c in out["tool_calls"] if c["name"] != "grounding_check"]
+    bad = ungrounded_numbers(text, real_calls)
+    if bad:
+        fails.append(f"numbers not in any tool result: {bad}")
+    if PLAIN_VISITS.search(text):
+        fails.append("says ER visits without 'injury-related'")
+    tool_text = " ".join(c["result"] for c in out["tool_calls"]).lower()
+    for brand in q.get("brands_grounded", []):
+        if re.search(rf"\b{re.escape(brand)}\b", text, re.IGNORECASE) and (
+            brand.lower() not in tool_text
+        ):
+            fails.append(f"brand '{brand}' named without a tool result containing it")
+    if q.get("leads_with"):
+        first = re.split(r"(?<=[.!?])\s", text.strip(), maxsplit=1)[0]
+        if not re.search(q["leads_with"], first, re.IGNORECASE):
+            fails.append(f"first sentence does not match /{q['leads_with']}/")
+    table = out.get("table") or {}
+    cells = " | ".join(str(v) for r in table.get("rows", []) for v in r)
+    for pat in q.get("table_groups", []):
+        if not re.search(pat, cells, re.IGNORECASE):
+            fails.append(f"final table has no row for /{pat}/ (needs both groups)")
     if q["kind"] != "cannot" and re.match(
         r"\s*(the data|i|this data)\s+(cannot|can't|can not)", text, re.IGNORECASE
     ):

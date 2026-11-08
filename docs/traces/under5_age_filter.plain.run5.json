@@ -1,0 +1,58 @@
+{
+ "case": "under5_age_filter",
+ "question": "How many ER visits were there for children under 5 in 2025?",
+ "mode": "plain",
+ "run": 5,
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "wrong: raw Age < 5, weighted (856,149)",
+ "response": "There were **33,344** actual sampled emergency room visits recorded in the NEISS database for children under 5 years old in 2025 (accounting for an estimated **856,149** weighted national ER visits).",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT count(*) \nFROM neiss \nWHERE age < 5 \n  AND strftime('%Y', treat_date) = '2025'\n"
+   },
+   "result": "{\"error\": \"Binder Error: Referenced column \\\"treat_date\\\" not found in FROM clause!\"}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nDESCRIBE neiss;\n"
+   },
+   "result": "{\"columns\": [\"column_name\", \"column_type\", \"null\", \"key\", \"default\", \"extra\"], \"rows\": [[\"CPSC_Case_Number\", \"BIGINT\", \"YES\", null, null, null], [\"Treatment_Date\", \"DATE\", \"YES\", null, null, null], [\"Age\", \"SMALLINT\", \"YES\", null, null, null], [\"Sex\", \"SMALLINT\", \"YES\", null, null, null], [\"Race\", \"SMALLINT\", \"YES\", null, null, null], [\"Other_Race\", \"VARCHAR\", \"YES\", null, null, null], [\"Hispanic\", \"SMALLINT\", \"YES\", null, null, null], [\"Body_Part\", \"SMALLINT\", \"YES\", null, null, null], [\"Diagnosis\", \"SMALLINT\", \"YES\", null, null, null], [\"Other_Diagnosis\", \"VARCHAR\", \"YES\", null, null, null], [\"Body_Part_2\", \"SMALLINT\", \"YES\", null, null, null], [\"Diagnosis_2\", \"SMALLINT\", \"YES\", null, null, null], [\"Other_Diagnosis_2\", \"VARCHAR\", \"YES\", null, null, null], [\"Disposition\", \"SMALLINT\", \"YES\", null, null, null], [\"Location\", \"SMALLINT\", \"YES\", null, null, null], [\"Fire_Involvement\", \"SMALLINT\", \"YES\", null, null, null], [\"Product_1\", \"INTEGER\", \"YES\", null, null, null], [\"Product_2\", \"INTEGER\", \"YES\", null, null, null], [\"Product_3\", \"INTEGER\", \"YES\", null, null, null], [\"Alcohol\", \"SMALLINT\", \"YES\", null, null, null], [\"Drug\", \"SMALLINT\", \"YES\", null, null, null], [\"Narrative_1\", \"VARCHAR\", \"YES\", null, null, null], [\"Stratum\", \"VARCHAR\", \"YES\", null, null, null], [\"PSU\", \"SMALLINT\", \"YES\", null, null, null], [\"Weight\", \"DOUBLE\", \"YES\", null, null, null]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT count(*) \nFROM neiss \nWHERE Age < 5 \n  AND strftime('%Y', Treatment_Date) = '2025'\n"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT sum(Weight) \nFROM neiss \nWHERE Age < 5 \n  AND strftime('%Y', Treatment_Date) = '2025'\n"
+   },
+   "result": "{\"columns\": [\"sum(Weight)\"], \"rows\": [[856148.8678999358]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "sum(Weight)"
+  ],
+  "rows": [
+   [
+    856148.8678999358
+   ]
+  ],
+  "truncated": false,
+  "sql": "\nSELECT sum(Weight) \nFROM neiss \nWHERE Age < 5 \n  AND strftime('%Y', Treatment_Date) = '2025'\n"
+ },
+ "chart": null,
+ "caveats": []
+}

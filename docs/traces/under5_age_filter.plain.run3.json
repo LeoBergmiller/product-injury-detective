@@ -1,0 +1,90 @@
+{
+ "case": "under5_age_filter",
+ "question": "How many ER visits were there for children under 5 in 2025?",
+ "mode": "plain",
+ "run": 3,
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "wrong: raw Age < 5, unweighted rows (33,344)",
+ "response": "Based on the NEISS data for 2025, there were 33,344 emergency department visits for children under 5 years old (using standard numeric age values `< 5`, or 35,922 if including infants encoded with NEISS age codes for months under 1 year old, where ages 201\u2013204 represent ages under 5 months).",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE age < 5 AND strftime(treatment_date, '%Y') = '2025'"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT min(treatment_date), max(treatment_date) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025'"
+   },
+   "result": "{\"columns\": [\"min(treatment_date)\", \"max(treatment_date)\"], \"rows\": [[\"2025-01-01\", \"2025-12-31\"]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE (age < 5 OR (age >= 200 AND age < 205)) AND strftime(treatment_date, '%Y') = '2025'"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[35922]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT age, count(*) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025' GROUP BY age ORDER BY age LIMIT 10"
+   },
+   "result": "{\"columns\": [\"Age\", \"count_star()\"], \"rows\": [[0, 45], [2, 13014], [3, 11168], [4, 9117], [5, 8493], [6, 7802], [7, 7281], [8, 7085], [9, 7444], [10, 7745]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT min(age), max(age) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025' AND age < 10"
+   },
+   "result": "{\"columns\": [\"min(age)\", \"max(age)\"], \"rows\": [[0, 9]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT age, count(*) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025' AND age >= 200 ORDER BY age"
+   },
+   "result": "{\"error\": \"Binder Error: column \\\"age\\\" must appear in the GROUP BY clause or must be part of an aggregate function.\"}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT age, count(*) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025' AND age >= 200 GROUP BY age ORDER BY age"
+   },
+   "result": "{\"columns\": [\"Age\", \"count_star()\"], \"rows\": [[201, 833], [202, 625], [203, 518], [204, 602], [205, 852], [206, 1003], [207, 1181], [208, 1233], [209, 1202], [210, 1158], [211, 1052], [212, 1109], [213, 1059], [214, 1125], [215, 1152], [216, 1129], [217, 1152], [218, 1246], [219, 1269], [220, 1222], [221, 1195], [222, 1254], [223, 1168]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT count(*) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025' AND (age < 5 OR (age >= 200 AND age < 205))"
+   },
+   "result": "{\"columns\": [\"count_star()\"], \"rows\": [[35922]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "count_star()"
+  ],
+  "rows": [
+   [
+    35922
+   ]
+  ],
+  "truncated": false,
+  "sql": "SELECT count(*) FROM neiss WHERE strftime(treatment_date, '%Y') = '2025' AND (age < 5 OR (age >= 200 AND age < 205))"
+ },
+ "chart": null,
+ "caveats": []
+}

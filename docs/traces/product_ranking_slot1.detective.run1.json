@@ -1,13 +1,12 @@
 {
- "case": {
-  "id": "product_ranking_weights",
-  "question": "Which products send the most people to the ER in 2025?",
-  "expected": "Floors 3,079,996; stairs 1,310,287; beds 1,133,481 (weighted, any slot)"
- },
+ "case": "product_ranking_slot1",
+ "question": "Which products send the most people to the ER in 2025?",
  "mode": "detective",
+ "run": 1,
  "model": "vertex_ai/gemini-3.5-flash-lite",
- "generated": "2026-11-08 21:02 UTC",
- "response": "In 2025 (all ages), the everyday products associated with the highest estimated emergency room visits in the US are:\n\n1. **Floors or flooring materials**: About 3.08 million estimated ER visits (70,650 sample cases).\n2. **Stairs or steps**: About 1.31 million estimated ER visits (31,688 sample cases).\n3. **Beds or bedframes (other or not specified)**: About 1.13 million estimated ER visits (28,828 sample cases).\n4. **Chairs (other or not specified)**: About 496,221 estimated ER visits (12,293 sample cases).\n5. **Bicycles or accessories**: About 420,962 estimated ER visits (10,644 sample cases).\n6. **Ceilings and walls (interior)**: About 419,266 estimated ER visits (10,683 sample cases).\n7. **Bathtubs or showers**: About 418,075 estimated ER visits (9,767 sample cases).\n8. **Tables (not elsewhere classified)**: About 382,897 estimated ER visits (10,370 sample cases).\n9. **Exercise (activity or apparel without equipment)**: About 382,874 estimated ER visits (8,982 sample cases).\n10. **Basketball (activity, apparel or equipment)**: About 365,706 estimated ER visits (10,522 sample cases).\n\n*Note: These figures represent national estimates weighted from participating hospital emergency departments. They reflect the product categories involved in ER visits, not a direct measure of product risk or causation per use.*",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "correct: any slot, weighted (floors 3,079,996)",
+ "response": "In 2025, the products associated with the highest estimated injury-related ER visits were floors or flooring materials, with an estimated 3.08 million visits (from 70,650 sample cases), followed by stairs or steps with about 1.31 million estimated visits (31,688 sample cases), and beds or bedframes (other or not specified) with about 1.13 million estimated visits (28,828 sample cases). \n\nRounding out the top ten for 2025 are chairs (other or not specified) at approximately 496,221 estimated visits, bicycles or accessories at about 420,962 estimated visits, ceilings and walls at about 419,266 estimated visits, bathtubs or showers at about 418,075 estimated visits, unclassified tables at about 382,897 estimated visits, exercise activity without equipment at about 382,874 estimated visits, and basketball activity, apparel, or equipment at about 365,706 estimated visits. All of these top ten estimates are based on robust sample sizes (low_sample is false for each).\n\nThese are counts of injury-related ER visits, not rates: the groups differ in size, and population denominators are not in the data.",
  "tool_calls": [
   {
    "name": "run_sql",
@@ -16,11 +15,18 @@
    },
    "result": "{\"columns\": [\"rank\", \"product_code\", \"product_title\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[1, 1807, \"Floors or flooring materials\", 70650, 3079996.0, false], [2, 1842, \"Stairs or steps (excluding pull-down and folding stairs)\", 31688, 1310287.0, false], [3, 4076, \"Beds or bedframes, other or not specified\", 28828, 1133481.0, false], [4, 4074, \"Chairs, other or not specified\", 12293, 496221.0, false], [5, 5040, \"Bicycles or accessories (excluding mountain or all-terrain bicycles)\", 10644, 420962.0, false], [6, 1884, \"Ceilings and walls (interior part of completed structure)\", 10683, 419266.0, false], [7, 611, \"Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)\", 9767, 418075.0, false], [8, 4057, \"Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)\", 10370, 382897.0, false], [9, 3299, \"Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)\", 8982, 382874.0, false], [10, 1205, \"Basketball (activity, apparel or equipment)\", 10522, 365706.0, false]], \"truncated\": false}",
    "agent": "Product-Injury Detective"
+  },
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "SELECT product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample\nFROM v_top_products\nWHERE year = 2025 AND age_group = 'all'\nORDER BY rank\nLIMIT 10;"
+   },
+   "result": "{\"columns\": [\"product_code\", \"product_title\", \"n_cases\", \"est_visits\", \"low_sample\"], \"rows\": [[1807, \"Floors or flooring materials\", 70650, 3079996.0, false], [1842, \"Stairs or steps (excluding pull-down and folding stairs)\", 31688, 1310287.0, false], [4076, \"Beds or bedframes, other or not specified\", 28828, 1133481.0, false], [4074, \"Chairs, other or not specified\", 12293, 496221.0, false], [5040, \"Bicycles or accessories (excluding mountain or all-terrain bicycles)\", 10644, 420962.0, false], [1884, \"Ceilings and walls (interior part of completed structure)\", 10683, 419266.0, false], [611, \"Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)\", 9767, 418075.0, false], [4057, \"Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)\", 10370, 382897.0, false], [3299, \"Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)\", 8982, 382874.0, false], [1205, \"Basketball (activity, apparel or equipment)\", 10522, 365706.0, false]], \"truncated\": false}",
+   "agent": "Product-Injury Detective"
   }
  ],
  "table": {
   "columns": [
-   "rank",
    "product_code",
    "product_title",
    "n_cases",
@@ -29,7 +35,6 @@
   ],
   "rows": [
    [
-    1,
     1807,
     "Floors or flooring materials",
     70650,
@@ -37,7 +42,6 @@
     false
    ],
    [
-    2,
     1842,
     "Stairs or steps (excluding pull-down and folding stairs)",
     31688,
@@ -45,7 +49,6 @@
     false
    ],
    [
-    3,
     4076,
     "Beds or bedframes, other or not specified",
     28828,
@@ -53,7 +56,6 @@
     false
    ],
    [
-    4,
     4074,
     "Chairs, other or not specified",
     12293,
@@ -61,7 +63,6 @@
     false
    ],
    [
-    5,
     5040,
     "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
     10644,
@@ -69,7 +70,6 @@
     false
    ],
    [
-    6,
     1884,
     "Ceilings and walls (interior part of completed structure)",
     10683,
@@ -77,7 +77,6 @@
     false
    ],
    [
-    7,
     611,
     "Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)",
     9767,
@@ -85,7 +84,6 @@
     false
    ],
    [
-    8,
     4057,
     "Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)",
     10370,
@@ -93,7 +91,6 @@
     false
    ],
    [
-    9,
     3299,
     "Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)",
     8982,
@@ -101,7 +98,6 @@
     false
    ],
    [
-    10,
     1205,
     "Basketball (activity, apparel or equipment)",
     10522,
@@ -110,7 +106,7 @@
    ]
   ],
   "truncated": false,
-  "sql": "SELECT rank, product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample\nFROM v_top_products\nWHERE year = 2025 AND age_group = 'all' AND rank <= 10\nORDER BY rank;"
+  "sql": "SELECT product_code, product_title, n_cases, ROUND(est_visits) AS est_visits, low_sample\nFROM v_top_products\nWHERE year = 2025 AND age_group = 'all'\nORDER BY rank\nLIMIT 10;"
  },
  "chart": {
   "type": "bar",
@@ -120,43 +116,53 @@
   "data": [
    {
     "x": "Floors or flooring materials",
-    "y": 3079996.0
+    "y": 3079996.0,
+    "series": null
    },
    {
     "x": "Stairs or steps (excluding pull-down and folding stairs)",
-    "y": 1310287.0
+    "y": 1310287.0,
+    "series": null
    },
    {
     "x": "Beds or bedframes, other or not specified",
-    "y": 1133481.0
+    "y": 1133481.0,
+    "series": null
    },
    {
     "x": "Chairs, other or not specified",
-    "y": 496221.0
+    "y": 496221.0,
+    "series": null
    },
    {
     "x": "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
-    "y": 420962.0
+    "y": 420962.0,
+    "series": null
    },
    {
     "x": "Ceilings and walls (interior part of completed structure)",
-    "y": 419266.0
+    "y": 419266.0,
+    "series": null
    },
    {
     "x": "Bathtubs or showers (including fixtures or accessories; excluding enclosures, faucets, spigots and towel racks)",
-    "y": 418075.0
+    "y": 418075.0,
+    "series": null
    },
    {
     "x": "Tables, not elsewhere classified (excl. baby changing tables, billiard or pool tables and television tables or stands)",
-    "y": 382897.0
+    "y": 382897.0,
+    "series": null
    },
    {
     "x": "Exercise (activity or apparel without equipment), including aerobics, stretching, walking, jogging, running (excluding track and field)",
-    "y": 382874.0
+    "y": 382874.0,
+    "series": null
    },
    {
     "x": "Basketball (activity, apparel or equipment)",
-    "y": 365706.0
+    "y": 365706.0,
+    "series": null
    }
   ]
  },

@@ -23,9 +23,10 @@ questions:
   - id: sample_stairs_age
     kind: sample
     question: "How do injuries on stairs compare for children under 5 and adults 65+ in 2025?"
-    expect: "65+: 423,006 (8,865 cases); under 5: 81,016 (3,701 cases)"
+    expect: "Code 1842: 65+ 423,006 (8,865 cases); under 5 81,016 (3,701 cases). With pull-down stairs 1840, each case once: 423,446 / 81,042"
     tools_any: [run_sql]
-    text_any: [["423,006|423,000|423 thousand|0\\.42 million"], ["81,016|81,000|81 thousand"]]
+    text_any: [["423,006|423,000|423 thousand|0\\.42 million|423,446"], ["81,016|81,000|81 thousand|81,042"], ["not rates|population"]]
+    table_groups: ["0-4|under 5|under_5", "65"]
   # --- normal questions
   - id: trampoline_body_parts
     kind: normal
@@ -50,17 +51,25 @@ questions:
     question: "What share of ER visits by adults 65+ in 2025 involved floors?"
     expect: "1,768,793 of 4,837,571 = 36.6% (code 1807); 37.7% if 1817 porches/balconies/open-side floors is included, counting each case once"
     tools_any: [run_sql]
-    text_any: [["36\\.[5-7] ?%|37(\\.[0-9])? ?%|about a third|over a third|more than a third"]]
+    text_any: [["36\\.[5-7]\\d* ?%|37(\\.\\d+)? ?%|about a third|over a third|more than a third"]]
   # --- the data cannot answer (must say so)
   - id: cannot_per_hour_risk
     kind: cannot
     question: "Is it more dangerous per hour to ride a bike or a skateboard?"
     text_none: ["let's (check|look|start|find)"]
     text_any: [["exposure|per hour|how (many|much|often) (people|time)|hours|usage|participation|can(no|')t (tell|answer|calculate|determine)"]]
+  - id: cannot_rate_comparison
+    kind: cannot
+    question: "Are adults 65+ more likely than children under 5 to get hurt on stairs?"
+    expect: "Counts only (65+: 423,006; under 5: 81,016 in 2025); not rates, no population denominators"
+    text_any: [["not rates|population|denominator|per person|per capita"]]
+    text_none: ["(65\\+|older adults|seniors)[^.]{0,60}\\b(are|is|were)\\s+more likely"]
   - id: cannot_brand
     kind: cannot
-    question: "Which brand of stroller causes the most ER visits?"
-    text_any: [["brand"], ["(does not|doesn't|do not|don't|no|not) (track|record|include|contain|have|capture|collect)|no brand"]]
+    question: "Which brand of stroller is the most dangerous?"
+    leads_with: "brand|can(no|')t|cannot|not (track|record)|doesn't|does not|no data"
+    brands_grounded: [Graco, Baby Trend, Britax, Jeep, Baby Jogger, UPPAbaby, Mockingbird, Bugaboo, Schwinn, Bob, Peg Perego, Joovy, Chicco, Evenflo, Doona, Nuna, Thule, Maxi-Cosi, Summer Infant, Delta]
+    text_any: [["brand"], ["(does not|doesn't|do not|don't|no|not) (track|record|include|contain|have|capture|collect)|no brand|rather than brand|instead of brand|product types"]]
   - id: cannot_recall_effect
     kind: cannot
     question: "Did the recall of infant loungers cause infant injuries to drop?"

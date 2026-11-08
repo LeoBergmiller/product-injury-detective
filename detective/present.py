@@ -15,6 +15,14 @@ from detective.tools import RunState
 Y_PREFERENCE = ("est_visits", "estimated_visits", "est", "weighted", "visits")
 NOT_Y = {"year", "rank", "product_code", "code", "neiss_code", "recall_id", "psu"}
 LABEL_PREFERENCE = ("product_title", "label", "title", "name", "age_group")
+COUNTS_NOT_RATES = (
+    "These are counts of injury-related ER visits, not rates: the groups differ in "
+    "size, and population denominators are not in the data."
+)
+AGE_LITERAL = re.compile(r"'(0-4|5-14|15-24|25-44|45-64|65\+|unknown)'")
+AGE_YEARS_FILTER = re.compile(
+    r"age_years\s*(?:<=?|>=?|=|between)\s*\d+(?:\s+and\s+\d+)?"
+)
 
 
 def _is_num(v: Any) -> bool:
@@ -73,9 +81,30 @@ def build_chart(
     if label is None or len(rows) > cfg.chart_max_rows:
         return None
     li = cols.index(label)
+    # Wide comparison: one row per label, several estimate columns -> grouped bars.
+    est_cols = [c for c in y_candidates if any(p in c.lower() for p in Y_PREFERENCE)]
+    if len(est_cols) >= 2 and len({r[li] for r in rows}) == len(rows):
+        data = [
+            {"x": r[li], "y": r[cols.index(c)], "series": c}
+            for r in rows for c in est_cols if r[cols.index(c)] is not None
+        ]
+        return {"type": "bar", "x": label, "y": "est_visits", "series": "column",
+                "data": data}
+    # Long comparison: label x group (e.g. product x age_group) -> grouped bars.
+    others = [c for c in text if c != label]
+    group = next(
+        (c for c in others if 2 <= len({r[cols.index(c)] for r in rows}) <= 4),
+        None,
+    )
     if len({r[li] for r in rows}) != len(rows):
-        return None  # labels repeat: not one bar per row
-    data = [{"x": r[li], "y": r[yi]} for r in rows if r[yi] is not None]
+        if group is None:
+            return None  # labels repeat and nothing to group by
+        gi = cols.index(group)
+        data = [{"x": r[li], "y": r[yi], "series": r[gi]}
+                for r in rows if r[yi] is not None]
+        return {"type": "bar", "x": label, "y": y, "series": group, "data": data}
+    data = [{"x": r[li], "y": r[yi], "series": None}
+            for r in rows if r[yi] is not None]
     return {"type": "bar", "x": label, "y": y, "series": None, "data": data}
 
 
@@ -102,6 +131,16 @@ def build_caveats(state: RunState, cfg: AgentConfig) -> list[str]:
             f"Some estimates rest on fewer than {cfg.min_cases} sample cases and are "
             "unstable (project threshold)."
         )
+    groups = set(AGE_LITERAL.findall(sql_all)) | {
+        m.strip() for m in AGE_YEARS_FILTER.findall(sql_all)
+    }
+    for res in state.sql_results:
+        cols = [c.lower() for c in res["columns"]]
+        if "age_group" in cols:
+            i = cols.index("age_group")
+            groups |= {str(r[i]) for r in res["rows"] if r[i] != "all"}
+    if len(groups) >= 2 or len(years) >= 2:
+        caveats.append(COUNTS_NOT_RATES)
     if len(years) >= 2:
         caveats.append(
             "Product-code definitions across years have not been checked against "
@@ -109,8 +148,9 @@ def build_caveats(state: RunState, cfg: AgentConfig) -> list[str]:
         )
     if state.recall_results:
         caveats.append(
-            "Recalls shown are possible matches found by text search, not reviewed "
-            "links, and a recall does not show that a product caused these injuries."
+            "Recalls shown are possible matches (not reviewed) whose recalled product "
+            "matches the NEISS product; a recall does not show that a product caused "
+            "these injury-related ER visits."
         )
     if re.search(r"\bsafer_incidents|v_safer_incidents_neiss\b", sql_all):
         caveats.append(

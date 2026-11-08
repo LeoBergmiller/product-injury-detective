@@ -89,7 +89,8 @@
           <li>Read the answer, the table and the chart.</li>
           <li>Open "How I found this" to see every query.</li>
         </ol>
-        It counts ER visits; it can't tell you per-use risk, brands in NEISS, or causes.
+        It counts injury-related ER visits, not rates: it can't tell you per-use risk,
+        which age group is "riskier", brands in NEISS, or causes.
       </div>
     </div>
     <div class="chips" id="chips"></div>
@@ -129,6 +130,13 @@
   const fmt = (v) => typeof v === "number"
     ? (Number.isInteger(v) || Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: 2 }))
     : esc(v === null ? "" : v);
+  // Identifier columns (codes, years, ids, ranks) are shown raw, never as 1,807.
+  const isIdCol = (c) => /(^|_)(code|codes|id|year|rank|psu|seq|number)$/i.test(String(c));
+  // Display-only short product label: text before the first "(" or ",".
+  const shortLabel = (s, n = 30) => {
+    const t = String(s).split(/[(,]/)[0].trim() || String(s);
+    return t.length > n ? t.slice(0, n - 1) + "…" : t;
+  };
   const short = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "k" : String(Math.round(n));
 
   for (const q of EXAMPLES) {
@@ -141,25 +149,45 @@
   function renderTable(t) {
     if (!t || !t.rows?.length) return "";
     const head = t.columns.map((c) => `<th>${esc(c)}</th>`).join("");
-    const body = t.rows.map((r) => "<tr>" + r.map((v) =>
-      `<td class="${typeof v === "number" ? "num" : ""}">${fmt(v)}</td>`).join("") + "</tr>").join("");
+    const ids = t.columns.map(isIdCol);
+    const body = t.rows.map((r) => "<tr>" + r.map((v, i) => ids[i]
+      ? `<td>${esc(v === null ? "" : v)}</td>`
+      : `<td class="${typeof v === "number" ? "num" : ""}">${fmt(v)}</td>`).join("") + "</tr>").join("");
     return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
       + (t.truncated ? `<small>Showing the first ${t.rows.length} rows.</small>` : "");
   }
 
+  const COLORS = ["#2f6f8f", "#b4442a", "#5f8f3e", "#7a4f9a"];
+
   function renderBar(c) {
-    const rowH = 22, labelW = 230, w = 760, plotW = w - labelW - 70;
+    // One row per x label; with a series, one bar per series inside the row.
+    const xs = [...new Set(c.data.map((d) => d.x))];
+    const series = [...new Set(c.data.map((d) => d.series ?? ""))];
+    const barH = series.length > 1 ? 14 : 16, gap = 8, labelW = 210, w = 760;
+    const plotW = w - labelW - 70, rowH = series.length * barH + gap;
     const max = Math.max(...c.data.map((d) => d.y)) || 1;
-    const h = c.data.length * rowH + 24;
-    const bars = c.data.map((d, i) => {
-      const y = i * rowH + 4, bw = Math.max(1, (d.y / max) * plotW);
-      const label = String(d.x).length > 34 ? String(d.x).slice(0, 33) + "…" : String(d.x);
-      return `<text x="${labelW - 6}" y="${y + 14}" text-anchor="end">${esc(label)}</text>
-        <rect x="${labelW}" y="${y}" width="${bw}" height="${rowH - 6}" rx="3" fill="var(--bar)"><title>${esc(d.x)}: ${fmt(d.y)}</title></rect>
-        <text x="${labelW + bw + 5}" y="${y + 14}">${short(d.y)}</text>`;
-    }).join("");
-    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(c.y)} by ${esc(c.x)}">${bars}
-      <text x="${labelW}" y="${h - 4}">${esc(c.y)}</text></svg>`;
+    const legendH = series.length > 1 ? 20 : 0;
+    const h = xs.length * rowH + 20 + legendH;
+    let svg = "";
+    if (series.length > 1) {
+      series.forEach((sname, k) => {
+        svg += `<rect x="${labelW + k * 150}" y="2" width="10" height="10" fill="${COLORS[k % 4]}"/>
+          <text x="${labelW + k * 150 + 14}" y="11">${esc(shortLabel(sname, 22))}</text>`;
+      });
+    }
+    xs.forEach((x, i) => {
+      const y0 = legendH + i * rowH + 2;
+      svg += `<text x="${labelW - 6}" y="${y0 + (series.length * barH) / 2 + 4}" text-anchor="end"><title>${esc(x)}</title>${esc(shortLabel(x))}</text>`;
+      series.forEach((sname, k) => {
+        const d = c.data.find((e) => e.x === x && (e.series ?? "") === sname);
+        if (!d) return;
+        const y = y0 + k * barH, bw = Math.max(1, (d.y / max) * plotW);
+        svg += `<rect x="${labelW}" y="${y}" width="${bw}" height="${barH - 3}" rx="2" fill="${COLORS[k % 4]}"><title>${esc(x)}${sname ? " · " + esc(sname) : ""}: ${fmt(d.y)}</title></rect>
+          <text x="${labelW + bw + 5}" y="${y + barH - 5}">${short(d.y)}</text>`;
+      });
+    });
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(c.y)} by ${esc(c.x)}">${svg}
+      <text x="${labelW}" y="${h - 4}">${esc(c.y)} (estimated injury-related ER visits)</text></svg>`;
   }
 
   function renderLine(c) {
@@ -183,7 +211,7 @@
       svg += `<polyline fill="none" stroke="${col}" stroke-width="2.5" points="${pts.map((p) => `${px(p.x)},${py(p.y)}`).join(" ")}"/>`;
       svg += pts.map((p) => `<circle cx="${px(p.x)}" cy="${py(p.y)}" r="3.5" fill="${col}"><title>${esc(name)} ${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join("");
       const last = pts[pts.length - 1];
-      const nm = String(name).length > 22 ? String(name).slice(0, 21) + "…" : name;
+      const nm = shortLabel(name, 22);
       svg += `<text x="${px(last.x) + 8}" y="${py(last.y) + 4}" fill="${col}" style="fill:${col}">${esc(nm)}</text>`;
     });
     return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(c.y)} by year">${svg}</svg>`;

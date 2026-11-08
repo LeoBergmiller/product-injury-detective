@@ -20,7 +20,9 @@ from agents.tool_context import ToolContext  # noqa: E402
 from detective.agent import Detective  # noqa: E402
 from detective.config import AgentConfig  # noqa: E402
 from detective.db import guardrail_message  # noqa: E402
+from detective.grounding import normalize_visits, ungrounded_numbers  # noqa: E402
 from detective.present import build_caveats, build_chart, build_table  # noqa: E402
+from detective.recall_match import plausible_for_product, product_nouns  # noqa: E402
 from detective.tools import RunState  # noqa: E402
 
 LOG = logging.getLogger("test_offline")
@@ -48,6 +50,41 @@ def test_guardrail_rejects() -> None:
         assert guardrail_message(q), f"should reject: {q}"
 
 
+def test_double_count_guardrail() -> None:
+    assert guardrail_message(
+        "SELECT age_group, SUM(weight) FROM v_case_products WHERE year = 2025 "
+        "GROUP BY age_group")
+    assert guardrail_message(
+        "SELECT SUM(CASE WHEN product_code IN (1807, 1817) THEN weight END) "
+        "FROM v_case_products")
+    assert guardrail_message(
+        "SELECT SUM(weight) FROM v_case_products WHERE product_code = 1233") is None
+    assert guardrail_message(
+        "SELECT product_code, SUM(weight) FROM v_case_products GROUP BY product_code"
+    ) is None
+
+
+def test_literal_select_rejected() -> None:
+    assert guardrail_message(
+        "SELECT '0-4' AS age_group, 3701 AS n_cases UNION ALL SELECT '65+', 8865")
+    assert guardrail_message("SELECT 1") is not None
+    assert guardrail_message("SELECT * FROM v_top_products LIMIT 1") is None
+
+
+def test_visits_wording() -> None:
+    assert normalize_visits("36% of all ER visits; 5 emergency room visits") == (
+        "36% of all injury-related ER visits; 5 injury-related ER visits")
+    done = "1 injury-related ER visits"
+    assert normalize_visits(done) == done
+
+
+def test_grounding() -> None:
+    calls = [{"result": '{"rows": [[57638, 1469070.0, 36.56]]}'}]
+    ok = "1,469,070 visits, about 1.47 million, 36.6%"
+    assert ungrounded_numbers(ok, calls) == []
+    assert ungrounded_numbers("3,904 cases", calls) == ["3,904"]
+
+
 def test_guardrail_allows() -> None:
     ok = [
         "SELECT COUNT(*) AS n_cases, SUM(weight) AS est FROM neiss_cases "
@@ -57,7 +94,7 @@ def test_guardrail_allows() -> None:
         "SELECT count(*) FROM v_safer_incidents_neiss WHERE neiss_code = 1842",
         "SELECT count(*) AS n FROM neiss_codebook",
         "SELECT age_raw, count(*) n, sum(weight) w FROM neiss_cases GROUP BY 1",
-        "SELECT 'count(*) neiss_cases' AS s",
+        "SELECT 'count(*) neiss_cases' AS s FROM recalls LIMIT 1",
     ]
     for q in ok:
         assert guardrail_message(q) is None, f"should allow: {q}"
@@ -90,7 +127,24 @@ def test_tools() -> None:
                                 for x in r["recalls"])
     assert all(x["link_status"].startswith("possible match") for x in r["recalls"])
     r = call("search_recalls", {"keywords": "chair", "product_code": 4074})
-    assert r["source"] == "product_recall_xwalk"
+    assert r["recalls"] and all("chair" in x["why"] for x in r["recalls"])
+    r = call("search_recalls", {"keywords": "floor", "product_code": 1807})
+    assert not r["recalls"] and r["message"].startswith("no reviewed recall link found")
+
+
+def test_recall_relevance() -> None:
+    floors = product_nouns("Floors or flooring materials")
+    assert plausible_for_product("X Recalls Floor Lamps Due to Fire", ["Floor Lamp"],
+                                 floors) is None
+    assert plausible_for_product("X Recalls Laminate Flooring Due to Fire", [],
+                                 floors) == "flooring"
+    stairs = product_nouns("Stairs or steps (excluding pull-down and folding stairs)")
+    assert plausible_for_product(
+        "Viewrail Recalls Electronic LED Modules used with Floating Stairs and Rails "
+        "Due to Fire Hazard", ["Electronic LED Modules"], stairs) is None
+    beds = product_nouns("Beds or bedframes, other or not specified")
+    assert plausible_for_product("Y Recalls Raised Garden Bed Due to Fire", [],
+                                 beds) is None
 
 
 def test_presentation() -> None:
@@ -107,6 +161,25 @@ def test_presentation() -> None:
                           "rows": [[2019, 1.0], [2020, 2.0]], "truncated": False}),
               "Product-Injury Detective")
     assert build_chart(build_table(st), CFG)["type"] == "line"
+    cav = build_caveats(st, CFG)
+    assert any("not rates" in c for c in cav), "years comparison needs the rates note"
+
+
+def test_age_comparison() -> None:
+    st = RunState()
+    st.record("run_sql", {"query": "SELECT age_group, n_cases, est_visits FROM "
+                          "v_product_estimates WHERE age_group IN ('0-4', '65+')"},
+              json.dumps({"columns": ["age_group", "n_cases", "est_visits"],
+                          "rows": [["0-4", 3701, 81016.0], ["65+", 8865, 423006.0]],
+                          "truncated": False}), "Product-Injury Detective")
+    assert any("not rates" in c for c in build_caveats(st, CFG))
+    chart = build_chart(build_table(st), CFG)
+    assert chart["type"] == "bar" and len(chart["data"]) == 2
+    wide = {"columns": ["product_title", "est_visits_0_4", "est_visits_65plus"],
+            "rows": [["Stairs", 81016.0, 423006.0], ["Beds", 1.0, 2.0]],
+            "truncated": False, "sql": ""}
+    chart = build_chart(wide, CFG)
+    assert chart["series"] == "column" and len(chart["data"]) == 4
     assert st.tool_calls[0]["agent"] == "Product-Injury Detective"
 
 

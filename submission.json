@@ -1,0 +1,5 @@
+{
+  "deploy_url": "https://REPLACE-WITH-CLOUD-RUN-URL.run.app",
+  "authors": ["avr2141", "lab2309", "rl3575"],
+  "path": "text2sql"
+}

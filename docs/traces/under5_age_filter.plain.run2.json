@@ -1,0 +1,34 @@
+{
+ "case": "under5_age_filter",
+ "question": "How many ER visits were there for children under 5 in 2025?",
+ "mode": "plain",
+ "run": 2,
+ "model": "vertex_ai/gemini-3.5-flash-lite",
+ "generated": "2026-11-08 21:43 UTC",
+ "outcome": "wrong: raw Age < 5, unweighted rows (33,344)",
+ "response": "There were **33,344** emergency room visits recorded in the NEISS database for children under 5 years old in 2025.",
+ "tool_calls": [
+  {
+   "name": "run_sql",
+   "args": {
+    "query": "\nSELECT count(*) AS er_visits_under_5_2025\nFROM neiss\nWHERE age < 5 AND EXTRACT(YEAR FROM treatment_date) = 2025;\n"
+   },
+   "result": "{\"columns\": [\"er_visits_under_5_2025\"], \"rows\": [[33344]], \"truncated\": false}",
+   "agent": "Plain SQL agent"
+  }
+ ],
+ "table": {
+  "columns": [
+   "er_visits_under_5_2025"
+  ],
+  "rows": [
+   [
+    33344
+   ]
+  ],
+  "truncated": false,
+  "sql": "\nSELECT count(*) AS er_visits_under_5_2025\nFROM neiss\nWHERE age < 5 AND EXTRACT(YEAR FROM treatment_date) = 2025;\n"
+ },
+ "chart": null,
+ "caveats": []
+}
