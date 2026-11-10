@@ -23,8 +23,9 @@ browser ── POST /chat {message, session_id?} ──> app.py (FastAPI)
 ```
 
 Endpoints: `POST /chat`, `POST /clear?session_id=`, `GET /health`, and `GET /`, which
-serves `frontend/index.html`. Sessions live in memory, so Cloud Run must run with max
-instances = 1.
+serves `frontend/index.html`. Sessions live in memory (at most 500, least recently
+used dropped), so Cloud Run must run with max instances = 1. `message` must be 1-2000
+characters (else 422).
 
 ## Context built offline (`build/build_agent_context.py`)
 
@@ -72,8 +73,10 @@ The checks are in `detective/db.py` (`guardrail_message`), in this order:
 3. **Raw age filters.** A filter such as `age_raw < N` is rejected and redirected to
    `age_years`.
 4. **Summing the long product table.** `SUM` over `v_case_products` /
-   `neiss_case_products` without one `product_code` or a `GROUP BY product_code` is
-   rejected, because a case with several products would be counted once per product.
+   `neiss_case_products` without a `product_code = N` filter in the WHERE clause or a
+   `GROUP BY product_code` (by name, position such as `GROUP BY 1`, or `ALL`) is
+   rejected (a `CASE WHEN product_code = N` in the SELECT
+   list doesn't count: the other sums still add every product row), because a case with several products would be counted once per product.
 5. **Summing estimate rows across products.** `SUM` over `v_product_estimates` /
    `v_top_products` with `product_code IN (a, b, ...)` and no `GROUP BY product_code`
    is rejected: a case listing two of the codes is counted twice, and the summed
@@ -85,11 +88,13 @@ The checks are in `detective/db.py` (`guardrail_message`), in this order:
 **Grounding check** (`detective/grounding.py`, run after the answer). Every count
 (with commas, or a bare whole number of 3+ digits other than a year), "N million" and
 percentage in the answer must match a number in that turn's tool results (exactly,
-or within 0.5% when visibly rounded). If any doesn't, the agent first gets up to 4
+or within 0.5% when visibly rounded; "3 million" in a tool's text, such as a recall
+title, counts). If any doesn't, the agent first gets up to 4
 more steps to run the queries that return them (it sometimes answers from memory
 without running SQL), then, if numbers are still unmatched, rewrites the answer with
 tool calls forbidden (`tool_choice="none"`). A fix is kept only if it leaves fewer
-unmatched numbers.
+unmatched numbers. Fixes share the turn's `request_timeout_s` budget (240 s), so a
+turn never runs past it.
 Numbers still unmatched are listed in `caveats`, and the check is logged in
 `tool_calls` as `grounding_check`.
 
@@ -109,7 +114,12 @@ The prompt and the context state that the data cannot answer:
 
 `response` holds the prose. After the run, code rewrites plain "ER visits" as
 "injury-related ER visits", removes LaTeX-style `$n = 487$` markup, and moves a
-buried "the data cannot answer ..." paragraph to the top. The `table` (columns and rows) is the `run_sql` result
+buried "the data cannot answer ..." paragraph to the top. If the question asks which
+brand is most dangerous, for a state, city or hospital, for risk per hour or per use ("more dangerous", "safer", "per hour") or for a rate
+("more likely", "per person"), asks whether a recall or rule caused a change, or
+names a year outside the loaded NEISS years, and
+the answer never says the data can't answer it, code puts a fixed "The data cannot
+answer ..." sentence first. The `table` (columns and rows) is the `run_sql` result
 behind the answer: the latest result that holds the answer's first count (of the
 first three it checks), otherwise the last result. The agent sometimes runs an extra
 query after the one it answers from, so the last result alone can be the wrong

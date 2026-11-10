@@ -34,13 +34,59 @@ DATA_SOURCE = re.compile(
 )
 LONG_PRODUCTS = re.compile(r"\b(v_case_products|neiss_case_products)\b", re.I)
 SUM_CALL = re.compile(r"\bsum\s*\(", re.IGNORECASE)
-ONE_PRODUCT = re.compile(r"\bproduct_code\s*=\s*\d+", re.IGNORECASE)
+# One product filtered in WHERE (not in a CASE in the SELECT list, which still sums
+# every product row into the other columns).
+ONE_PRODUCT = re.compile(
+    r"\bwhere\b[^;]*?\bproduct_code\s*(?:=\s*\d+|in\s*\(\s*\d+\s*\))",
+    re.IGNORECASE | re.DOTALL,
+)
 GROUP_BY_PRODUCT = re.compile(
     r"group\s+by\b[^;]*?\bproduct_code\b", re.IGNORECASE | re.DOTALL
 )
 OTHER_SLOTS = re.compile(r"\bproduct_[23]\b|\bproduct_code\b", re.IGNORECASE)
 ESTIMATE_VIEWS = re.compile(r"\b(v_product_estimates|v_top_products)\b", re.IGNORECASE)
 SEVERAL_PRODUCTS = re.compile(r"\bproduct_code\s+in\s*\(\s*\d+\s*,", re.IGNORECASE)
+
+
+PRODUCT_CODE_ITEM = re.compile(r"(?:\w+\.)?product_code(?:\s+(?:as\s+)?\w+)?",
+                               re.IGNORECASE)
+GROUP_BY_CLAUSE = re.compile(
+    r"group\s+by\s+(.*?)(?=\border\s+by\b|\blimit\b|\bhaving\b|\)|;|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _select_items(code: str) -> list[str]:
+    """Top-level items of the first SELECT list (enough for GROUP BY 1 / ALL)."""
+    m = re.search(r"\bselect\b(.*?)\bfrom\b", code, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return []
+    items, depth, cur = [], 0, ""
+    for ch in m.group(1):
+        depth += ch == "("
+        depth -= ch == ")"
+        if ch == "," and depth == 0:
+            items.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return [*items, cur.strip()]
+
+
+def groups_by_product(code: str) -> bool:
+    """GROUP BY product_code, by name, by position (GROUP BY 1) or GROUP BY ALL."""
+    if GROUP_BY_PRODUCT.search(code):
+        return True
+    m = GROUP_BY_CLAUSE.search(code)
+    if not m:
+        return False
+    keys = [k.strip().lower() for k in m.group(1).split(",")]
+    items = _select_items(code)
+    is_code = [bool(PRODUCT_CODE_ITEM.fullmatch(it)) for it in items]
+    if "all" in keys:
+        return any(is_code)
+    return any(k.isdigit() and 0 < int(k) <= len(items) and is_code[int(k) - 1]
+               for k in keys)
 
 
 def _strip_sql_comments_and_strings(query: str) -> str:
@@ -81,12 +127,13 @@ def guardrail_message(query: str) -> str | None:
         LONG_PRODUCTS.search(code)
         and SUM_CALL.search(code)
         and not ONE_PRODUCT.search(code)
-        and not GROUP_BY_PRODUCT.search(code)
+        and not groups_by_product(code)
     ):
         return (
             "Rejected: v_case_products / neiss_case_products have one row per "
             "(case, product), so SUM(weight) over several products counts a case "
-            "once per product. For totals across products use neiss_cases; for a "
+            "once per product. For totals and shares (the denominator) use "
+            "neiss_cases; for a "
             "set of codes use neiss_cases WHERE product_1 IN (...) OR product_2 IN "
             "(...) OR product_3 IN (...); for one product filter product_code = N or "
             "GROUP BY product_code."
@@ -95,7 +142,7 @@ def guardrail_message(query: str) -> str | None:
         ESTIMATE_VIEWS.search(code)
         and SUM_CALL.search(code)
         and SEVERAL_PRODUCTS.search(code)
-        and not GROUP_BY_PRODUCT.search(code)
+        and not groups_by_product(code)
     ):
         return (
             "Rejected: v_product_estimates / v_top_products have one row per product, "

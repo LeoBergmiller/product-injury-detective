@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections import OrderedDict
 from typing import Any
 
 import uvicorn
 from agents import SQLiteSession
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from detective.agent import Detective
 from detective.config import AgentConfig
@@ -27,13 +28,16 @@ CFG = AgentConfig.load()
 DETECTIVE = Detective.build(CFG)
 
 # --- Session store: in memory, one SQLiteSession(":memory:") per session_id ---
-sessions: dict[str, SQLiteSession] = {}
+# Least recently used sessions are dropped beyond MAX_SESSIONS, so a long-running
+# service (kept up until grades are released) can't grow without bound.
+MAX_SESSIONS = 500
+sessions: OrderedDict[str, SQLiteSession] = OrderedDict()
 
 app = FastAPI(title="Product-Injury Detective")
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=2000)
     session_id: str | None = None
 
 
@@ -61,7 +65,11 @@ def health() -> dict[str, Any]:
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     session_id = request.session_id or str(uuid.uuid4())
-    session = sessions.setdefault(session_id, SQLiteSession(session_id))
+    session = sessions.get(session_id) or SQLiteSession(session_id)
+    sessions[session_id] = session
+    sessions.move_to_end(session_id)
+    while len(sessions) > MAX_SESSIONS:
+        sessions.popitem(last=False)
     payload = await DETECTIVE.ask(request.message, session=session)
     return ChatResponse(session_id=session_id, **payload)
 

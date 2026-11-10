@@ -105,7 +105,7 @@
 
 <form id="form">
   <div class="wrap">
-    <textarea id="input" placeholder="e.g. Which products send the most adults 65+ to the ER?" autofocus></textarea>
+    <textarea id="input" maxlength="2000" placeholder="e.g. Which products send the most adults 65+ to the ER?" autofocus></textarea>
     <button class="send" id="send" type="submit">Ask</button>
     <button class="ghost" id="clear" type="button" title="Start a new conversation">New</button>
   </div>
@@ -122,6 +122,8 @@
     "Which brand of stroller is most dangerous?",
   ];
   let sessionId = null;
+  let busy = false;      // one request at a time (chips and Enter too, not just Ask)
+  let generation = 0;    // bumped by New, so a late reply can't revive the old session
   const log = document.getElementById("log");
   const input = document.getElementById("input");
   const send = document.getElementById("send");
@@ -250,7 +252,9 @@
 
   async function ask(text) {
     text = text.trim();
-    if (!text) return;
+    if (!text || busy) return;
+    busy = true;
+    const gen = generation;
     addUser(text);
     input.value = "";
     const a = document.createElement("div");
@@ -264,6 +268,7 @@
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      if (gen !== generation) return;  // New was clicked while this was running
       sessionId = data.session_id;
       const chart = data.chart ? `<div class="chart">${data.chart.type === "line" ? renderLine(data.chart) : renderBar(data.chart)}</div>` : "";
       const cav = data.caveats?.length ? `<div class="caveats"><ul>${data.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : "";
@@ -271,15 +276,17 @@
     } catch (e) {
       a.innerHTML = `<span class="thinking">Request failed: ${esc(e.message)}</span>`;
     } finally {
-      send.disabled = false; input.focus();
+      if (gen === generation) { busy = false; send.disabled = false; input.focus(); }
     }
   }
 
   document.getElementById("form").onsubmit = (e) => { e.preventDefault(); ask(input.value); };
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); } });
   document.getElementById("clear").onclick = async () => {
-    if (sessionId) await fetch("/clear?session_id=" + encodeURIComponent(sessionId), { method: "POST" });
-    sessionId = null; log.innerHTML = "";
+    const old = sessionId;
+    generation += 1; sessionId = null; log.innerHTML = "";
+    busy = false; send.disabled = false;  // a reply still running is ignored
+    if (old) await fetch("/clear?session_id=" + encodeURIComponent(old), { method: "POST" });
   };
 </script>
 </body>

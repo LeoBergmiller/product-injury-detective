@@ -290,7 +290,9 @@ in [`docs/readme_examples.md`](docs/readme_examples.md).
 ## What the data can't answer
 
 The agent says so in its first sentence, then offers what the data can show. (If the
-model puts the "data cannot answer" paragraph later, code moves it to the top.)
+model puts the "data cannot answer" paragraph later, code moves it to the top; if a
+brand-danger, place, risk-per-use, rate, recall-effect or out-of-range-year question
+gets only counts, code adds the sentence.)
 - **Risk per use, per hour, or per owner, and "most dangerous" products.** There is
   no exposure data, only counts of injury-related ER visits.
 - **Which age group or year is "riskier", and rates per person.** Comparisons are
@@ -324,12 +326,14 @@ model puts the "data cannot answer" paragraph later, code moves it to the top.)
   stability rule is not stated in the documents we have.
 - **Keyword searches of the case narratives are approximate.**
 - **The model's answers vary between runs** (see the observed rates above).
-  - The last three live runs (2026-11-09) passed **13/13**, **12/13** and **13/13**
-    checks (`tests/test_questions.py`). The 12/13 miss was the bicycle trend: its numbers
-    were right, but it gave the low and high years instead of the 2019 starting
-    value the check looks for. Two earlier runs that day scored 12/13, both missing
-    the per-hour risk question (visit counts without saying the data has no
-    exposure measure). A saved 13/13 run is in
+  - After the last fixes (2026-11-09: refusals for brand, place, rate, per-use risk,
+    recall-effect and out-of-range-year questions checked in code; the guardrail
+    for shares computed over the long product table), two live runs both passed
+    **13/13** checks (`tests/test_questions.py`). Runs before those fixes that day
+    scored 13/13, 12/13, 13/13, 11/13, 12/13 and 11/13; the misses were answers
+    that skipped the "data cannot answer" sentence, a bicycle trend that gave the
+    low and high years instead of 2019, and one 29.24% floors share computed over
+    double-counted product rows (correct: 36.6%). A saved 13/13 run is in
     [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json).
     Earlier runs scored 7/12, 11/12, 12/12, 8/13, 9/13, 11/13, 13/13, and 10/13.
   - The checks themselves are partly lenient regexes.
@@ -339,7 +343,13 @@ model puts the "data cannot answer" paragraph later, code moves it to the top.)
   diagnosis) before adding the rule that rejects SQL typing literal numbers.
 - **"Injury-related ER visits" wording is enforced in code.** Any plain "ER visits" in
   an answer is rewritten to it, so the wording test passes partly by construction.
+- **Some "data cannot answer" sentences are added in code.** When a question asks
+  which brand is most dangerous, for a place, for per-use risk, for a rate, whether a
+  recall caused a change, or for a year outside 2019-2025, and the answer doesn't say
+  it can't answer that, a fixed sentence is put first. The match is by question
+  wording, so unusual phrasings can be missed or wrongly matched, and the live
+  "cannot" checks pass partly by construction.
 - **The counts-not-rates sentence can be over-applied.** The agent sometimes adds it
   to a single-group answer.
 - **Sessions are kept in memory**, so the Cloud Run service must run with max
-  instances = 1.
+  instances = 1. At most 500 are kept; the least recently used are dropped.

@@ -21,6 +21,7 @@ from detective.agent import Detective  # noqa: E402
 from detective.config import AgentConfig  # noqa: E402
 from detective.db import guardrail_message  # noqa: E402
 from detective.grounding import (  # noqa: E402
+    ensure_cannot,
     normalize_visits,
     refusal_first,
     ungrounded_numbers,
@@ -102,6 +103,46 @@ def test_grounding() -> None:
         "2019: 11,873 visits (n = 487); costs $5")
 
 
+
+def test_share_denominator_rejected() -> None:
+    # Seen live: a CASE on one product next to SUM(weight) over every product row.
+    q = ("SELECT SUM(CASE WHEN product_code = 1807 THEN weight ELSE 0 END) AS floors, "
+         "SUM(weight) AS total FROM v_case_products WHERE year = 2025 "
+         "AND age_group = '65+'")
+    assert "once per product" in (guardrail_message(q) or "")
+    one = ("SELECT SUM(weight) FROM v_case_products WHERE year = 2025 "
+           "AND product_code = 1807")
+    assert guardrail_message(one) is None
+
+
+def test_positional_group_by_allowed() -> None:
+    # Seen live, wrongly rejected: GROUP BY 1, 2 where column 1 is product_code.
+    ok = ("SELECT product_code, product_title, COUNT(*) AS n_cases, "
+          "ROUND(SUM(weight)) AS est_visits FROM v_case_products WHERE year = 2025 "
+          "AND product_code IN (1401, 1439) GROUP BY 1, 2 ORDER BY est_visits DESC")
+    assert guardrail_message(ok) is None
+    assert guardrail_message(ok.replace("GROUP BY 1, 2", "GROUP BY ALL")) is None
+    # Still rejected: position 1 is a CASE that merges products into groups.
+    merged = ("SELECT CASE WHEN p.product_code IN (5033, 5040) THEN 'bikes' END AS g, "
+              "ROUND(SUM(p.weight)) AS est FROM v_case_products p WHERE p.year = 2025 "
+              "AND p.product_code IN (5033, 5040, 1333) GROUP BY 1")
+    assert guardrail_message(merged)
+
+
+def test_million_in_tool_text() -> None:
+    calls = [{"result": '{"rows": [[9147, "Boppy Recalls Over 3 Million Loungers"]]}'}]
+    assert ungrounded_numbers("a recall of over 3 million loungers", calls) == []
+
+
+def test_year_outside_data() -> None:
+    q = "How many people were injured by lawn mowers in 2012?"
+    out = ensure_cannot(q, "In 2025 there were 54,139 visits.", (2019, 2025))
+    assert out.startswith("The data cannot answer this for 2012")
+    said = "The data only covers 2019 to 2025. In 2025 there were 54,139 visits."
+    assert ensure_cannot(q, said, (2019, 2025)) == said
+    assert ensure_cannot("Lawn mowers in 2024?", "54,139 visits.", (2019, 2025)) == (
+        "54,139 visits.")
+
 def test_summed_estimates_rejected() -> None:
     q = ("SELECT age_group, SUM(n_cases), SUM(est_visits) FROM v_product_estimates "
          "WHERE year = 2025 AND product_code IN (1840, 1842) GROUP BY age_group")
@@ -149,6 +190,7 @@ def test_tools() -> None:
     r = call("lookup_codes", {"kind": "product", "query": "stairs"})
     assert any(m["code"] == 1842 for m in r["matches"])
     assert "error" in call("lookup_codes", {"kind": "nope"})
+    assert "error" in call("lookup_codes", {"kind": "product", "query": "??"})
     assert call("describe_data", {"table": "v_top_products"})["kind"] == "view"
     r = call("search_recalls", {"keywords": "bunk bed", "since_year": 2020})
     assert r["recalls"] and all(x["url"].startswith("https://www.cpsc.gov")
@@ -267,6 +309,82 @@ def test_refusal_first() -> None:
     first = "The data cannot answer that.\n\nInstead: 5 visits."
     assert refusal_first(first) == first
     assert refusal_first("There were 1,469,070 visits.") == "There were 1,469,070 visits."
+    caveat = ("Floors lead with 1,768,793 visits.\n\nThe data does not show that a "
+              "recalled product caused these injuries.")
+    assert refusal_first(caveat) == caveat  # a closing caveat stays at the end
+
+
+
+def test_ensure_cannot() -> None:
+    counts = "Bicycles: 540,881 visits; skateboards: 61,011."
+    out = ensure_cannot("Is it more dangerous per hour to ride a bike or a skateboard?",
+                        counts)
+    assert out.startswith("The data cannot answer") and out.endswith(counts)
+    said = "The data cannot answer that per hour. Bicycles: 540,881 visits."
+    assert ensure_cannot("Is a bike more dangerous per hour?", said) == said
+    rate = ensure_cannot("Are adults 65+ more likely to fall on stairs?", counts)
+    assert "not rates" in rate
+    plain = "How many ER visits were there for children under 5 in 2025?"
+    assert ensure_cannot(plain, counts) == counts
+    cause = ensure_cannot("Did the recall of infant loungers cause injuries to drop?",
+                          "Infant visits: 193,828 in 2019, 258,353 in 2025.")
+    assert "caused a change" in cause.split("\n")[0]
+    assert ensure_cannot("What causes most falls on stairs?", counts) == counts
+    brand = ensure_cannot("Which brand of stroller is the most dangerous?", counts)
+    assert brand.startswith("The data cannot answer which brand")
+    ohio = ensure_cannot("How many trampoline injuries were there in Ohio in 2024?",
+                         "Nationwide in 2024 there were 118,179 visits.", (2019, 2025))
+    assert "state, city or hospital" in ohio.split("\n")[0]
+
+def test_grounding_respects_deadline() -> None:
+    import asyncio
+
+    st = RunState()
+    st.record("run_sql", {"query": "SELECT 1"},
+              json.dumps({"columns": ["n"], "rows": [[57638]], "truncated": False}),
+              "Product-Injury Detective")
+
+    async def run() -> str:
+        past = asyncio.get_running_loop().time() - 1  # no time left: no model call
+        class Result:  # stands in for a RunResult; no model is called
+            def to_input_list(self) -> list:
+                return []
+
+        return await DET._ground(Result(), "There were 9,999 visits.", st, past)
+
+    assert asyncio.run(run()) == "There were 9,999 visits."
+    assert st.ungrounded == ["9,999"]
+    assert st.tool_calls[-1]["result"] == "rewrite not used"
+
+
+def test_app_sessions_and_input() -> None:
+    # In a subprocess: importing app opens its own DuckDB connection, and one
+    # process can't open the same locked database twice.
+    import subprocess
+    import sys
+
+    code = """
+from fastapi.testclient import TestClient
+import app as m
+c = TestClient(m.app)
+assert c.get("/health").json()["status"] == "ok"
+assert c.post("/chat", json={"message": ""}).status_code == 422
+assert c.post("/chat", json={"message": "x" * 2001}).status_code == 422
+assert c.post("/clear", params={"session_id": "nope"}).json() == {"status": "ok"}
+async def fake_ask(message, session=None):  # no model call
+    return {"response": "ok", "tool_calls": [], "table": None, "chart": None,
+            "caveats": [], "mode": "detective"}
+m.DETECTIVE.ask = fake_ask
+m.MAX_SESSIONS = 3
+ids = [c.post("/chat", json={"message": "hi"}).json()["session_id"] for _ in range(5)]
+assert list(m.sessions) == ids[-3:], "oldest sessions are dropped"
+c.post("/chat", json={"message": "hi", "session_id": ids[2]})
+assert list(m.sessions)[-1] == ids[2], "a used session becomes most recent"
+print("ok", len(m.sessions))
+"""
+    out = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                         capture_output=True, text=True, timeout=120)
+    assert out.returncode == 0 and out.stdout.startswith("ok"), out.stderr[-500:]
 
 
 def main() -> None:

@@ -61,7 +61,8 @@ product codes and coded values. Never guess a code or a column name.
    Never turn them into national estimates; use them only for examples, brands, models.
 9. Trends: product-code comparability across years has NOT been checked (the CPSC comparability tables are not parsed yet). You may show a product by year, but say that code definitions may have changed and that a change is not proof of a real trend. Only combine codes that are present in every year shown
    (lookup_codes gives years_present); a code that starts mid-series makes a fake
-   jump.
+   jump. For a change over time, give the first and the last year's estimates
+   (e.g. "from X in 2019 to Y in 2025"), then the low and high if they matter.
 10. Only one statement per run_sql call, and it must be a SELECT. Queries that count
     NEISS rows without the weight are rejected; fix them as the message says.
 11. Comparisons between age groups or between years: these are COUNTS, not rates.

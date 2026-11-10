@@ -26,7 +26,12 @@ from agents.extensions.models.litellm_model import LitellmModel
 
 from detective.config import AgentConfig
 from detective.db import Database, load_context
-from detective.grounding import normalize_visits, refusal_first, ungrounded_numbers
+from detective.grounding import (
+    ensure_cannot,
+    normalize_visits,
+    refusal_first,
+    ungrounded_numbers,
+)
 from detective.present import build_caveats, build_chart, build_table, drop_stated
 from detective.tools import RunState, make_detective_tools, make_run_sql
 
@@ -58,6 +63,7 @@ GROUNDING_QUERY = (
 )
 GROUNDING_QUERY_TURNS = 4
 GROUNDING_QUERY_TIMEOUT_S = 60
+GROUNDING_MIN_S = 10  # don't start a fix with less time left than this
 GROUNDING_FIX = (
     "Your answer contains numbers that do not appear in any tool result: {numbers}. "
     "Rewrite the whole answer using only numbers that appear in the tool results "
@@ -101,6 +107,7 @@ class Detective:
     mode: str
     agent: Agent[RunState]
     db: Database
+    years: tuple[int, int] | None = None  # loaded NEISS years (detective mode)
 
     @classmethod
     def build(cls, cfg: AgentConfig, mode: str | None = None) -> Detective:
@@ -126,6 +133,8 @@ class Detective:
                 model_settings=settings,
                 tools=make_detective_tools(db, ctx, cfg),
             )
+            first, last = ctx["coverage"]["neiss_years"]
+            return cls(cfg=cfg, mode=mode, agent=agent, db=db, years=(first, last))
         return cls(cfg=cfg, mode=mode, agent=agent, db=db)
 
     async def _wrap_up(self, data: RunErrorHandlerInput[RunState]) -> str | None:
@@ -148,6 +157,10 @@ class Detective:
     ) -> dict[str, Any]:
         """One chat turn -> the /chat payload minus session_id."""
         state = RunState()
+        # One budget for the whole turn, grounding fixes included, so a request never
+        # runs past request_timeout_s (Cloud Run and the graders wait at most 300 s).
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + self.cfg.request_timeout_s
         try:
             result = await asyncio.wait_for(
                 Runner.run(
@@ -166,8 +179,10 @@ class Detective:
                 "Try a narrower question (one product, one age group, one year)."
             )
             if self.mode != "plain":
-                response = await self._ground(result, response, state)
-                response = refusal_first(normalize_visits(response))
+                response = await self._ground(result, response, state, deadline)
+                response = ensure_cannot(
+                    message, refusal_first(normalize_visits(response)), self.years
+                )
         except MaxTurnsExceeded:
             response = (
                 f"I hit my limit of {self.cfg.max_turns} steps before finishing. "
@@ -215,7 +230,9 @@ class Detective:
         texts = [t for t in texts if t]
         return "\n\n".join(texts) if len(texts) > 1 else final
 
-    async def _ground(self, result: Any, response: str, state: RunState) -> str:
+    async def _ground(
+        self, result: Any, response: str, state: RunState, deadline: float
+    ) -> str:
         """If the answer has numbers no tool returned, fix it once.
 
         First the agent may query again (it sometimes answers from memory without
@@ -232,14 +249,19 @@ class Detective:
             ("re-queried", self.agent, GROUNDING_QUERY, GROUNDING_QUERY_TURNS),
             ("answer rewritten", no_tool_closer(self.agent), GROUNDING_FIX, 1),
         ]
+        loop = asyncio.get_running_loop()
         for label, agent, prompt, turns in attempts:
+            remaining = deadline - loop.time()
+            if remaining < GROUNDING_MIN_S:
+                LOG.info("grounding fix (%s) skipped: %.0f s left", label, remaining)
+                break
             msg = {"role": "user",
                    "content": prompt.format(numbers=", ".join(best_bad))}
             try:
                 fixed = await asyncio.wait_for(
                     Runner.run(agent, history + [msg], context=state,
                                hooks=RecordToolCalls(), max_turns=turns),
-                    timeout=GROUNDING_QUERY_TIMEOUT_S,
+                    timeout=min(GROUNDING_QUERY_TIMEOUT_S, remaining),
                 )
                 new = self._full_text(fixed)
             except Exception:

@@ -27,7 +27,10 @@ TOOL_NUM = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 def tool_numbers(tool_calls: list[dict[str, Any]]) -> list[float]:
     nums: list[float] = []
     for c in tool_calls:
-        for m in TOOL_NUM.findall(str(c.get("result", ""))):
+        text = str(c.get("result", ""))
+        # "Recalls Over 3 Million Loungers" in a recall title supports "3 million".
+        nums += [float(m) * 1e6 for m in NUM_MILLION.findall(text)]
+        for m in TOOL_NUM.findall(text):
             try:
                 nums.append(float(m))
             except ValueError:
@@ -88,10 +91,11 @@ def normalize_visits(text: str) -> str:
 
 
 # "The data cannot answer ..." belongs first (prompt rule); the model sometimes puts it
-# after the numbers, prefixed with "As noted,".
+# after the numbers, prefixed with "As noted,". Only "cannot answer" counts: closing
+# caveats such as "The data does not show that a recall caused ..." stay where they are.
 REFUSAL = re.compile(
-    r"^(?:as noted,?\s*|however,?\s*|note:?\s*)?((?:the|this) data (?:cannot|can't|can ?not|"
-    r"does not|doesn't) (?:answer|tell|show|rank|say))",
+    r"^(?:as noted,?\s*|however,?\s*|note:?\s*)?((?:the|this) data (?:cannot|can't|can ?not) "
+    r"answer)",
     re.IGNORECASE,
 )
 
@@ -108,3 +112,73 @@ def refusal_first(text: str) -> str:
             fixed = fixed[0].upper() + fixed[1:]
             return "\n\n".join([fixed] + paras[:i] + paras[i + 1:])
     return text
+
+
+# Questions the data can't answer as asked (prompt rule), checked in code because the
+# model sometimes answers them with plain counts. Each: (question pattern, sentence).
+US_STATES = (
+    r"Alabama|Alaska|Arizona|Arkansas|California|Colorado|Connecticut|Delaware|Florida|Georgia|Hawaii|Idaho|Illinois|Indiana|Iowa|Kansas|Kentucky|Louisiana|Maine|Maryland|Massachusetts|Michigan|Minnesota|Mississippi|Missouri|Montana|Nebraska|Nevada|New Hampshire|New Jersey|New Mexico|New York|North Carolina|North Dakota|Ohio|Oklahoma|Oregon|Pennsylvania|Rhode Island|South Carolina|South Dakota|Tennessee|Texas|Utah|Vermont|Virginia|Washington|West Virginia|Wisconsin|Wyoming|Puerto Rico|D\\.?C\\.?"
+)
+CANNOT = [
+    # Brand first: "which brand is most dangerous" must get the brand reason.
+    # Brand plus a danger word ("which brand is most dangerous / causes the most
+    # injuries"); "which brands appear most in reports" is answerable, with caveats.
+    (re.compile(r"(?=.*\b(?:brands?|manufacturers?|makers?|models?)\b)"
+                r"(?=.*\b(?:dangerous|safe|safer|safest|risk\w*|worst|deadl\w*|"
+                r"injur\w*|hurt\w*|harm\w*)\b)", re.IGNORECASE | re.DOTALL),
+     "The data cannot answer which brand or model is most dangerous: NEISS records "
+     "product types, not brands, and SaferProducts reports name brands but are "
+     "voluntary and not representative."),
+    (re.compile(rf"\b(?:in|from|for|across) (?:the )?(?:{US_STATES})\b|"
+                r"\b(?:by|per|each|which|my|our|this) (?:state|city|county|town|region|"
+                r"zip(?: code)?|area|neighborhood|hospital)\b|\bzip code",
+                re.IGNORECASE),
+     "The data cannot answer this for a state, city or hospital: NEISS gives national "
+     "estimates only and has no geographic detail."),
+    (re.compile(r"\b(?:per (?:hour|use|mile|ride|trip|minute)|(?:more|most|less|least) "
+                r"dangerous|riskier|riskiest|safer|safest|risk of)\b", re.IGNORECASE),
+     "The data cannot answer which is more dangerous per hour or per use: it has no "
+     "exposure data (how many people use a product, or for how long), only counts of "
+     "injury-related ER visits."),
+    (re.compile(r"\b(?:more likely|less likely|likelier|per person|per capita|"
+                r"injury rate|rate of injur)", re.IGNORECASE),
+     "The data cannot answer which group is more likely to be injured: it has counts "
+     "of injury-related ER visits, not rates, and no population denominators."),
+    # Cause and effect of an intervention ("did the recall reduce injuries?"); "what
+    # causes falls" alone is partly answerable from narratives, so it doesn't match.
+    (re.compile(r"(?=.*\b(?:recall|ban|standard|regulation|law|rule|warning)s?\b)"
+                r"(?=.*\b(?:caus(?:e|ed|es|ing)|effect|impact|led to|lead to|"
+                r"reduc(?:e|ed|es|ing)|prevent(?:ed|s)?|work(?:ed)?|help(?:ed)?)\b)",
+                re.IGNORECASE | re.DOTALL),
+     "The data cannot answer whether a recall or a product caused a change in "
+     "injuries: it shows estimated injury-related ER visits, not causes."),
+]
+SAYS_CANNOT = re.compile(r"\b(?:cannot|can't|can not|does not|doesn't) "
+                         r"(?:answer|tell|measure|determine|calculate)",
+                         re.IGNORECASE)
+
+
+YEAR = re.compile(r"\b(19\d\d|20\d\d)\b")
+
+
+def ensure_cannot(
+    question: str, answer: str, years: tuple[int, int] | None = None
+) -> str:
+    """Put the "data cannot answer" sentence first when the question asks for risk
+    per use, a rate, or a year outside the loaded NEISS years, and the answer doesn't
+    already say it can't answer that."""
+    if SAYS_CANNOT.search(answer):
+        return answer
+    if years:
+        outside = sorted({int(y) for y in YEAR.findall(question)
+                          if not years[0] <= int(y) <= years[1]})
+        mentions_range = re.search(rf"\b{years[0]}\b", answer) and re.search(
+            rf"\b{years[1]}\b", answer)
+        if outside and not mentions_range:
+            asked = ", ".join(map(str, outside))
+            return (f"The data cannot answer this for {asked}: the NEISS data loaded "
+                    f"here covers only {years[0]}-{years[1]}.\n\n" + answer)
+    for pattern, sentence in CANNOT:
+        if pattern.search(question):
+            return sentence + "\n\n" + answer
+    return answer

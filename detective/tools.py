@@ -153,6 +153,8 @@ def make_detective_tools(
             items = ctx["products"] if k == "product" else ctx["safer_categories"]
             key = "title" if k == "product" else "name"
             words = [re.sub(r"s$", "", w) for w in re.findall(r"\w+", query.lower())]
+            if not words:
+                return to_json({"error": f"'{k}' needs query words, e.g. 'stairs'."})
             hits = [
                 it
                 for it in items
