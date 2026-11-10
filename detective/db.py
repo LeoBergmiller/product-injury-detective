@@ -8,6 +8,7 @@ query can't SET its way out. On top of that, run_sql accepts exactly one SELECT.
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 from pathlib import Path
@@ -131,6 +132,11 @@ class Database:
 
     def __init__(self, cfg: AgentConfig, plain: bool = False) -> None:
         self.cfg = cfg
+        # The NEISS views read Parquet by repo-relative paths, and DuckDB checks those
+        # paths against allowed_directories before resolving them via
+        # file_search_path, so they only pass when the process runs in the repo root.
+        if Path.cwd() != REPO_ROOT:
+            os.chdir(REPO_ROOT)
         if not cfg.db_path.exists():
             raise SystemExit(
                 f"No database at {cfg.db_path}. Run the build (docs/SCHEMA.md)."
