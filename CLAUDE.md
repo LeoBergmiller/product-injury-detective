@@ -1,4 +1,4 @@
-# Product-Injury Detective: Agentic AI Project 2 (Data Exploration Agent)
+# Safety Detective (repo: product-injury-detective): Agentic AI Project 2 (Data Exploration Agent)
 
 ## Project context
 Three-person team (UNIs avr2141, lab2309, rl3575) in Columbia's Agentic AI course. Deliverable: a deployed data-exploration agent on GCP Cloud Run. Due Wed 2026-11-11, 11:59 PM. The topic is DECIDED. Do not re-propose topics unless you find a blocking problem, and if you do, say so plainly.

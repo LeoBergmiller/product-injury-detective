@@ -1,4 +1,4 @@
-# Product-Injury Detective
+# Safety Detective
 
 A Text2SQL agent over U.S. Consumer Product Safety Commission (CPSC) data. It answers:
 **"For a given age group, which everyday products send people to the emergency room,
