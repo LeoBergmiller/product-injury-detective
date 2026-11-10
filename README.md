@@ -28,7 +28,7 @@ been recalled?"**
 - **Path:** Text2SQL (`submission.json`).
 - **Team:** avr2141, lab2309, rl3575. Three sources, one per teammate: NEISS, CPSC
   Recalls, SaferProducts.gov.
-- **Deployed:** https://product-injury-detective-ux3bbl6loa-ue.a.run.app (settings in
+- **Deployed:** https://product-injury-detective-312549403688.us-east1.run.app (settings in
   [`docs/DEPLOY.md`](docs/DEPLOY.md)).
 
 ## How it works

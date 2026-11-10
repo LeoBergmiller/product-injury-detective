@@ -28,12 +28,11 @@ Google Cloud **buildpacks** (no Dockerfile), and the data shipped in the repo.
 
 ## Access control
 
-Project 1 used **IAP with principal `columbia.edu`**. We don't know which Google
-accounts the graders and peer reviewers will use (the handles in the handout,
-codeboi07, bhuvighosh3, nniishhh and x, are GitHub accounts to add as repo
-collaborators, not sign-in accounts), so IAP may lock them out. Allowing
-unauthenticated access is the safe choice. This is a team decision; see "Not verified
-yet" for the access problem seen on 2026-11-09.
+**IAP with principal `columbia.edu`**, as in the course's "Deploying to Cloud Run
+from GitHub" guide (Step 6, "Restrict access to Columbia users"). Graders and peer
+reviewers sign in with a Columbia Google account. Someone signing in with a
+non-Columbia account is blocked; the handles in the handout (codeboi07, bhuvighosh3,
+nniishhh, x) are GitHub accounts to add as repo collaborators, not sign-in accounts.
 
 ## Data
 
@@ -81,13 +80,17 @@ A `git clone` of `main`, installed with `uv sync --locked --no-dev`:
 
 - The buildpack build itself (with uv) on this repo.
 - The memory headroom on Cloud Run.
-- **Access for graders.** On 2026-11-09 the URL in `submission.json`
+- **Access for graders.** On 2026-11-09 the earlier URL
   (`https://product-injury-detective-ux3bbl6loa-ue.a.run.app`) returned **403
   Forbidden** to every unauthenticated request, including `/health`: the service
-  required Cloud Run invoker authentication. It is also not yet confirmed that this
-  URL is our service. To open it, in the service's **Security** tab choose "Allow
-  unauthenticated invocations", or run
-  `gcloud run services add-iam-policy-binding product-injury-detective --region <region> --member=allUsers --role=roles/run.invoker`.
+  required Cloud Run invoker authentication. On 2026-11-10 that URL and the one now
+  in `submission.json` (`https://product-injury-detective-312549403688.us-east1.run.app`,
+  the same service's other URL format) both redirect to a Google sign-in ("Invalid
+  IAP credentials" without one). This is intended: the course's "Deploying to Cloud
+  Run from GitHub" guide (Step 6) puts Identity-Aware Proxy in front of the service
+  with `columbia.edu` as the allowed principal, so only Columbia accounts can open the
+  app. Do not make the service public. Check access by signing in with a Columbia
+  account in a browser; scripts without an IAP token get the redirect.
 
 ## After deploying
 
