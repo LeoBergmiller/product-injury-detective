@@ -20,7 +20,11 @@ from agents.tool_context import ToolContext  # noqa: E402
 from detective.agent import Detective  # noqa: E402
 from detective.config import AgentConfig  # noqa: E402
 from detective.db import guardrail_message  # noqa: E402
-from detective.grounding import normalize_visits, ungrounded_numbers  # noqa: E402
+from detective.grounding import (  # noqa: E402
+    normalize_visits,
+    refusal_first,
+    ungrounded_numbers,
+)
 from detective.present import (  # noqa: E402
     COUNTS_NOT_RATES,
     build_caveats,
@@ -252,6 +256,17 @@ def test_caveat_not_repeated() -> None:
                        answer) == ["Recalls shown are possible matches."]
     assert drop_stated([COUNTS_NOT_RATES], "There were 81,016 visits.") == [
         COUNTS_NOT_RATES]
+
+
+def test_refusal_first() -> None:
+    buried = ("In 2025 there were 16,573 visits.\n\nAs noted, the data cannot answer "
+              "which brand is most dangerous.")
+    assert refusal_first(buried) == (
+        "The data cannot answer which brand is most dangerous.\n\n"
+        "In 2025 there were 16,573 visits.")
+    first = "The data cannot answer that.\n\nInstead: 5 visits."
+    assert refusal_first(first) == first
+    assert refusal_first("There were 1,469,070 visits.") == "There were 1,469,070 visits."
 
 
 def main() -> None:

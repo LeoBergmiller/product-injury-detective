@@ -107,7 +107,9 @@ The prompt and the context state that the data cannot answer:
 
 ## Output
 
-`response` holds the prose. The `table` (columns and rows) is the `run_sql` result
+`response` holds the prose. After the run, code rewrites plain "ER visits" as
+"injury-related ER visits", removes LaTeX-style `$n = 487$` markup, and moves a
+buried "the data cannot answer ..." paragraph to the top. The `table` (columns and rows) is the `run_sql` result
 behind the answer: the latest result that holds the answer's first count (of the
 first three it checks), otherwise the last result. The agent sometimes runs an extra
 query after the one it answers from, so the last result alone can be the wrong

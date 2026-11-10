@@ -85,3 +85,26 @@ def normalize_visits(text: str) -> str:
     text = LATEX_ASSIGN.sub(r"\1", text)
     text = DOUBLE_ESTIMATED.sub(r"\1", text)
     return PLAIN_VISITS.sub("injury-related ER visits", text)
+
+
+# "The data cannot answer ..." belongs first (prompt rule); the model sometimes puts it
+# after the numbers, prefixed with "As noted,".
+REFUSAL = re.compile(
+    r"^(?:as noted,?\s*|however,?\s*|note:?\s*)?((?:the|this) data (?:cannot|can't|can ?not|"
+    r"does not|doesn't) (?:answer|tell|show|rank|say))",
+    re.IGNORECASE,
+)
+
+
+def refusal_first(text: str) -> str:
+    """Move a buried 'the data cannot answer ...' paragraph to the top."""
+    paras = [p for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+    for i, para in enumerate(paras):
+        m = REFUSAL.match(para.strip())
+        if m:
+            if i == 0:
+                return text
+            fixed = para.strip()[m.start(1):]
+            fixed = fixed[0].upper() + fixed[1:]
+            return "\n\n".join([fixed] + paras[:i] + paras[i + 1:])
+    return text

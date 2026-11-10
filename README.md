@@ -289,7 +289,8 @@ in [`docs/readme_examples.md`](docs/readme_examples.md).
 
 ## What the data can't answer
 
-The agent says so in its first sentence, then offers what the data can show:
+The agent says so in its first sentence, then offers what the data can show. (If the
+model puts the "data cannot answer" paragraph later, code moves it to the top.)
 - **Risk per use, per hour, or per owner, and "most dangerous" products.** There is
   no exposure data, only counts of injury-related ER visits.
 - **Which age group or year is "riskier", and rates per person.** Comparisons are
@@ -323,8 +324,8 @@ The agent says so in its first sentence, then offers what the data can show:
   stability rule is not stated in the documents we have.
 - **Keyword searches of the case narratives are approximate.**
 - **The model's answers vary between runs** (see the observed rates above).
-  - The last two live runs (2026-11-09) passed **13/13** and **12/13** checks
-    (`tests/test_questions.py`). The 12/13 miss was the bicycle trend: its numbers
+  - The last three live runs (2026-11-09) passed **13/13**, **12/13** and **13/13**
+    checks (`tests/test_questions.py`). The 12/13 miss was the bicycle trend: its numbers
     were right, but it gave the low and high years instead of the 2019 starting
     value the check looks for. Two earlier runs that day scored 12/13, both missing
     the per-hour risk question (visit counts without saying the data has no

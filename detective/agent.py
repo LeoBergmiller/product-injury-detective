@@ -26,7 +26,7 @@ from agents.extensions.models.litellm_model import LitellmModel
 
 from detective.config import AgentConfig
 from detective.db import Database, load_context
-from detective.grounding import normalize_visits, ungrounded_numbers
+from detective.grounding import normalize_visits, refusal_first, ungrounded_numbers
 from detective.present import build_caveats, build_chart, build_table, drop_stated
 from detective.tools import RunState, make_detective_tools, make_run_sql
 
@@ -167,7 +167,7 @@ class Detective:
             )
             if self.mode != "plain":
                 response = await self._ground(result, response, state)
-                response = normalize_visits(response)
+                response = refusal_first(normalize_visits(response))
         except MaxTurnsExceeded:
             response = (
                 f"I hit my limit of {self.cfg.max_turns} steps before finishing. "
