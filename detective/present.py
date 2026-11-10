@@ -77,8 +77,10 @@ def build_table(state: RunState, response: str = "") -> dict[str, Any] | None:
     """The query result behind the answer's headline number.
 
     That is the latest result holding the answer's first count (checking the first
-    three); with no match, the last result. The agent sometimes runs an extra query
-    after the one it answers from, so "last" alone can show the wrong table.
+    three): comma counts and "N million", or, if the answer has none, whole numbers of
+    2+ digits that aren't years ("30 reports"). With no match, the last result. The
+    agent sometimes runs an extra query after the one it answers from, so "last" alone
+    can show the wrong table.
     """
     if not state.sql_results:
         return None

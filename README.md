@@ -63,8 +63,8 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
   Otherwise it says "no reviewed recall link found".
 - **The page** shows the answer, caveats, a table, and a chart (one chart with both
   groups side by side for comparisons). The table is the query result behind the
-  answer's first number. "How I found this" lists every tool call,
-  including guardrail rejections. The design is in
+  answer's first number; a long table scrolls inside its own box. "How I found this"
+  lists every tool call, including guardrail rejections. The design is in
   [`docs/AGENT_DESIGN.md`](docs/AGENT_DESIGN.md).
 
 ## Data: where it came from and how to rebuild it

@@ -132,7 +132,8 @@ The model doesn't always follow this, so code also checks it (see Output).
 
 **`table`** (columns and rows) is the `run_sql` result behind the answer: the latest
 result that holds the answer's first count (of the first three it checks), otherwise
-the last result. The agent sometimes runs an extra query after the one it answers
+the last result. Counts are comma numbers and "N million"; if the answer has none,
+whole numbers of 2+ digits that aren't years or age bands ("30 reports"). The agent sometimes runs an extra query after the one it answers
 from, so the last result alone can be the wrong table. One row per age group in text
 order (`15-24` before `5-14`) is put in age order.
 
@@ -155,6 +156,22 @@ approximate narrative keyword matches, and any numbers the grounding check could
 match. A caveat the answer already states is not repeated.
 
 **`mode`** is `detective`, or `plain` for the README baseline.
+
+## The page (`frontend/index.html`)
+
+- One request at a time; the Ask button, Enter and the sample-question buttons all
+  wait for the current answer. "New" clears the conversation and ignores a reply
+  still on its way.
+- A finished answer is scrolled into view: all of it above the fixed input bar if it
+  fits, otherwise from its top. The page keeps space at the bottom so the last answer
+  can always scroll clear of the bar.
+- Tables sit in a box no taller than 480 px or 55% of the window, whichever is
+  smaller, which scrolls on its own; when it does, a note says "N rows (scroll the table to see all)". Long text
+  wraps between words, so the number columns stay in view.
+- Answer text renders `**bold**`, `[text](url)` links and bare URLs; everything else
+  is escaped.
+- "How I found this" lists every tool call with its arguments and result, and marks
+  guardrail rejections.
 
 ## Plain mode (README comparison)
 

@@ -120,8 +120,8 @@
 </form>
 
 <script>
-  // One request per message: POST /chat returns
-  // { response, session_id, tool_calls[{name,args,result,agent}], table?, chart?, caveats? }.
+  // One request at a time: POST /chat returns
+  // { response, session_id, tool_calls[{name,args,result,agent}], table?, chart?, caveats, mode }.
   const EXAMPLES = [
     "How many ER visits were there for children under 5 in 2025?",
     "Which products send the most adults 65+ to the ER, and have any been recalled?",
