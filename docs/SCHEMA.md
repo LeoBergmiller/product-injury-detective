@@ -32,8 +32,8 @@ this file.
 |---|---|---|---|
 | `neiss_cases/` (one file per year), `neiss_case_products`, `neiss_codebook`, `product_code_stability` | `build/build_neiss.py` | Leo | NEISS yearly TSVs, `docs/DataDictionary042022.xlsx` |
 | `product_codes` | `build/build_product_codes.py` | Leo | Coding manual, Appendix H |
-| `recalls`, `recall_products` | `build/fetch_recalls.py` + `build/build_recalls.py` | **TBD** | Recalls API, one request per year |
-| `safer_incidents`, `safer_codebook` | `build/fetch_saferproducts_incidents.py` + `build/build_saferproducts.py` | **TBD** | SaferProducts OData (`$skiptoken` paging, ≤5 req/s) |
+| `recalls`, `recall_products` | `build/fetch_recalls.py` + `build/build_recalls.py` | rl3575 | Recalls API, one request per year |
+| `safer_incidents`, `safer_codebook` | `build/fetch_saferproducts_incidents.py` + `build/build_saferproducts.py` | avr2141 | SaferProducts OData (`$skiptoken` paging, ≤5 req/s) |
 | `safer_category_xwalk`, `product_recall_xwalk` | `build/build_xwalks.py` | **TBD** | the above + `build/seeds/product_recall_xwalk.csv` |
 | `injuries.duckdb` (all tables + views) | `build/build_db.py` | Leo | all Parquet above |
 
@@ -45,7 +45,7 @@ scripts run only when refreshing the raw pulls.
 writes `data/processed/agent_context.json` and `data/processed/system_prompt.md`,
 which `app.py` loads. Don't edit those two files by hand; see `docs/AGENT_DESIGN.md`.
 
-Owners marked TBD are for the team to assign (arapinan, rainliu19).
+Source owners match the README's data table. The crosswalk builder (`build_xwalks.py`) is still TBD.
 
 ## Global rules
 

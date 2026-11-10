@@ -57,6 +57,18 @@ GROUNDING_FIX = (
 )
 
 
+def no_tool_closer(agent: Agent[RunState]) -> Agent[RunState]:
+    """A copy of the agent that must answer in text.
+
+    The tools stay declared, because the history it reads contains their calls;
+    with no tools declared, Gemini still tries to call run_sql and the SDK raises
+    "Tool run_sql not found". tool_choice="none" forbids new calls instead.
+    """
+    return agent.clone(
+        model_settings=agent.model_settings.resolve(ModelSettings(tool_choice="none"))
+    )
+
+
 class RecordToolCalls(RunHooks[RunState]):
     """Records every completed tool call, with the name of the agent that made it."""
 
@@ -110,7 +122,7 @@ class Detective:
 
     async def _wrap_up(self, data: RunErrorHandlerInput[RunState]) -> str | None:
         """At the turn limit, answer once more WITHOUT tools from what was found."""
-        closer = data.run_data.last_agent.clone(tools=[])
+        closer = no_tool_closer(data.run_data.last_agent)
         history = list(data.run_data.history) + [
             {"role": "user", "content": WRAP_UP}
         ]
@@ -196,7 +208,7 @@ class Detective:
         bad = ungrounded_numbers(response, state.tool_calls)
         if not bad:
             return response
-        closer = self.agent.clone(tools=[])
+        closer = no_tool_closer(self.agent)
         history = result.to_input_list() + [
             {"role": "user", "content": GROUNDING_FIX.format(numbers=", ".join(bad))}
         ]

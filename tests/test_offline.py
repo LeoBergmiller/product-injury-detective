@@ -161,6 +161,13 @@ def test_presentation() -> None:
                           "rows": [[2019, 1.0], [2020, 2.0]], "truncated": False}),
               "Product-Injury Detective")
     assert build_chart(build_table(st), CFG)["type"] == "line"
+    # Wide by year with no est_* names: every measure gets a line, n_cases does not.
+    wide_years = {"columns": ["year", "bicycles", "e_bicycles", "n_cases"],
+                  "rows": [[2019, 417673.4, 0.0, 9], [2020, 426109.4, 0.0, 8]],
+                  "truncated": False, "sql": ""}
+    chart = build_chart(wide_years, CFG)
+    assert chart["type"] == "line" and chart["series"] == "column"
+    assert {d["series"] for d in chart["data"]} == {"bicycles", "e_bicycles"}
     cav = build_caveats(st, CFG)
     assert any("not rates" in c for c in cav), "years comparison needs the rates note"
 

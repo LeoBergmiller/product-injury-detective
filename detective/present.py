@@ -14,6 +14,9 @@ from detective.tools import RunState
 
 Y_PREFERENCE = ("est_visits", "estimated_visits", "est", "weighted", "visits")
 NOT_Y = {"year", "rank", "product_code", "code", "neiss_code", "recall_id", "psu"}
+# Unweighted sample counts: never the main series when a weighted column exists.
+SAMPLE_COUNT = re.compile(r"^(n|n_cases|cases|sample_cases|case_count|num_cases|n_sample)$")
+MAX_LINE_SERIES = 6
 LABEL_PREFERENCE = ("product_title", "label", "title", "name", "age_group")
 COUNTS_NOT_RATES = (
     "These are counts of injury-related ER visits, not rates: the groups differ in "
@@ -68,6 +71,21 @@ def build_chart(
     if "year" in cols and len({r[cols.index("year")] for r in rows}) >= 2:
         xi = cols.index("year")
         series = label if label and len(rows) > len({r[xi] for r in rows}) else None
+        # Wide by year (e.g. year, bicycles, e_bicycles, or year, est_visits_0_4,
+        # est_visits_65plus): one line per measure column, not just one column.
+        preferred = [c for c in y_candidates if any(p in c.lower() for p in Y_PREFERENCE)]
+        measures = preferred or [
+            c for c in y_candidates if not SAMPLE_COUNT.match(c.lower())
+        ]
+        if (series is None
+                and 2 <= len(measures) <= MAX_LINE_SERIES
+                and len(rows) == len({r[xi] for r in rows})):
+            data = [
+                {"x": r[xi], "y": r[cols.index(c)], "series": c}
+                for c in measures for r in rows if r[cols.index(c)] is not None
+            ]
+            return {"type": "line", "x": "year", "y": "est_visits",
+                    "series": "column", "data": data}
         si = cols.index(series) if series else None
         if series and len({r[si] for r in rows}) > 6:
             return None

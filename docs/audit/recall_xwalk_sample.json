@@ -1,0 +1,542 @@
+[
+ {
+  "confidence": "high",
+  "neiss_code": 670,
+  "product_title": "Chair, recliner",
+  "recall_id": 2194,
+  "recall_title": "CPSC, Adams Manufacturing Corp. Announce Recall of Folding Chair",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 4074,
+  "product_title": "Chairs, other or not specified",
+  "recall_id": 6707,
+  "recall_title": "Staples Recalls Back in Motion Office Chairs Due to Fall Hazard",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1395,
+  "product_title": "Toys, not specified",
+  "recall_id": 1254,
+  "recall_title": "Children's Riding Toy Recalled by Step2 Due to Fall Hazard",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1439,
+  "product_title": "Lawn mowers, not specified",
+  "recall_id": 1246,
+  "recall_title": "Kawasaki Motors Recalls Fuel Filters for Lawn Mower and Utility Vehicle Engines Due to Fire Hazard",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 5040,
+  "product_title": "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
+  "recall_id": 8711,
+  "recall_title": "Trek Recalls Super Commuter+ Electric Bicycles Due to Fall Hazard",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 661,
+  "product_title": "Bunk beds",
+  "recall_id": 5736,
+  "recall_title": "CPSC Announces Recall Of Additional Wooden Bunk Beds",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1552,
+  "product_title": "Cribs, nonportable or not specified",
+  "recall_id": 269,
+  "recall_title": "Jardine Recalls to Repair Drop-Side Cribs Due to Entrapment, Suffocation and Fall Hazards",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1395,
+  "product_title": "Toys, not specified",
+  "recall_id": 10768,
+  "recall_title": "Tiyol Pull String Teething Toys Recalled Due to Risk of Serious Injury or Death from Choking; Violates Mandatory Standard for Toys; Sold on Amazon by ZW Creations",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1555,
+  "product_title": "High chairs",
+  "recall_id": 5183,
+  "recall_title": "Evenflo Recalls Envision\u2122 High Chairs Due to Fall and Choking Hazards",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 661,
+  "product_title": "Bunk beds",
+  "recall_id": 149,
+  "recall_title": "CPSC, Pottery Barn Kids Inc. Announce Recall of Bunk Beds",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1552,
+  "product_title": "Cribs, nonportable or not specified",
+  "recall_id": 464,
+  "recall_title": "Recent Death Prompts Search for Recalled Play Yards/Cribs",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1200,
+  "product_title": "Sports and recreational activity, not elsewhere classified",
+  "recall_id": 7819,
+  "recall_title": "BYA Sports Recalls Hammocks Due to Fall Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 4074,
+  "product_title": "Chairs, other or not specified",
+  "recall_id": 1222,
+  "recall_title": "Dream On Me Recalls High Chairs Due to Strangulation Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 5040,
+  "product_title": "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
+  "recall_id": 2102,
+  "recall_title": "CPSC, BikeE Corp. Announce Recall of Recumbent Bicycles",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1242,
+  "product_title": "Slides or sliding boards (excluding swimming pool slides)",
+  "recall_id": 5439,
+  "recall_title": "WHAM-O Backyard Water Slides Are Dangerous For Adults And Teenagers",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1395,
+  "product_title": "Toys, not specified",
+  "recall_id": 4922,
+  "recall_title": "Hasbro Inc. Recalls to Repair Nerf Blasters; Child's Skin Can Get Caught in Plunger of the Toy",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1345,
+  "product_title": "Building sets",
+  "recall_id": 3656,
+  "recall_title": "Serious Intestinal Injury Prompts Kipp Brothers Recall of Mag Stix Magnetic Building Sets",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 5024,
+  "product_title": "Scooters, unspecified (not known if powered or not)",
+  "recall_id": 8680,
+  "recall_title": "fluidfreeride Recalls Mercane WideWheel Electric Scooters Due to Fall and Injury Hazards (Recall Alert)",
+  "correct": false,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 1395,
+  "product_title": "Toys, not specified",
+  "recall_id": 4238,
+  "recall_title": "Squeeze Toys Recalled by Crib Mates & Baby World",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "high",
+  "neiss_code": 4074,
+  "product_title": "Chairs, other or not specified",
+  "recall_id": 9056,
+  "recall_title": "TJX Recalls Outdoor Wooden Folding Chairs Due to Fall and Injury Hazards; Sold at T.J. Maxx, Marshalls, HomeGoods and Sierra",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1931,
+  "product_title": "Tablet or capsule drugs (excluding aspirin, aspirin substitutes, iron preparations and antihistamines)",
+  "recall_id": 5501,
+  "recall_title": "International Vitamin Corp. Recalls Iron Products That Can Cause Serious Illness",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1864,
+  "product_title": "Counters or countertops (excluding bars)",
+  "recall_id": 9377,
+  "recall_title": "Big Game Hunters Children's Outdoor Kitchens Recalled Due to Violation of Federal Lead Content Ban; Imported by DOM Sports; Sold Exclusively at Amazon.com",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 4078,
+  "product_title": "Ladders, other or not specified",
+  "recall_id": 9611,
+  "recall_title": "Walker Edison Furniture Recalls Twin Over Twin Bunk Beds Due to Fall and Impact Hazards",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1141,
+  "product_title": "Containers, not specified",
+  "recall_id": 11011,
+  "recall_title": "LLK Trading Recalls Mochi Malrang Mystery Dumpling Toys Due to Risk of Serious Injury or Death from Water Bead Ingestion; Violate Mandatory Standard for Toys",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 4078,
+  "product_title": "Ladders, other or not specified",
+  "recall_id": 10043,
+  "recall_title": "Delta Cycle Recalls Ceiling Hoists with Straps Due to Injury Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 648,
+  "product_title": "Sinks (excluding faucets)",
+  "recall_id": 1059,
+  "recall_title": "CPSC, XL Machine Ltd. Announce Recall of Dollhouse Furniture Sets Sold at Target Stores",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1205,
+  "product_title": "Basketball (activity, apparel or equipment)",
+  "recall_id": 8276,
+  "recall_title": "Golden State Warriors Menorahs Recalled by BDA Due to Fire and Burn Hazards (Recall Alert)",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1819,
+  "product_title": "Nails, screws, carpet tacks or thumbtacks -> Nails, screws, tacks or bolts",
+  "recall_id": 10810,
+  "recall_title": "School Specialty Recalls Tip Restraint Kits Included in Childcraft Furniture Due to Risk of Serious Injury or Death from Tip-Over Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1817,
+  "product_title": "Porches, balconies, open-side floors or floor openings",
+  "recall_id": 2385,
+  "recall_title": "CPSC, American Household Inc., (Formerly Sunbeam Corp.) Announce Recall of Star ME-1 Dry Fire Sprinklers, Administrative Lawsuit Settlement",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 679,
+  "product_title": "Sofas, couches, davenports, divans or studio couches",
+  "recall_id": 1509,
+  "recall_title": "Sam\u2019s Club Recalls Outdoor Seating Groups Due to Fall Hazard (Recall Alert)",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 3219,
+  "product_title": "Other playground equipment",
+  "recall_id": 6769,
+  "recall_title": "CPSC & Montgomery Wards Recall Boys Jackets and Sweatshirts",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1141,
+  "product_title": "Containers, not specified",
+  "recall_id": 10100,
+  "recall_title": "Vacation Recalls The Legendary VACATION by Vacation\u00ae Black Label Scented Candles Due to Fire and Laceration Hazards",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 3223,
+  "product_title": "Fishing (activity, apparel or equipment; excluding fishing knives)",
+  "recall_id": 4112,
+  "recall_title": "LP Gas Water Heater Controls Warning/Correction",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1843,
+  "product_title": "Ramps or landings",
+  "recall_id": 5290,
+  "recall_title": "Lord Howards Inc. Recalls Toy Helicopters",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1679,
+  "product_title": "Grocery or shopping carts, unpowered",
+  "recall_id": 6162,
+  "recall_title": "Gel Candles from Glade Recalled by S.C. Johnson",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1205,
+  "product_title": "Basketball (activity, apparel or equipment)",
+  "recall_id": 4006,
+  "recall_title": "Target Recalls Plush Boys Rattles Due to Choking Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1345,
+  "product_title": "Building sets",
+  "recall_id": 10618,
+  "recall_title": "Huaker Magnetic Balls and Rods Sets Recalled Due to Risk of Serious Injury or Death from Choking; Violates the Small Ball Ban",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1267,
+  "product_title": "Soccer (activity, apparel or equipment)",
+  "recall_id": 9323,
+  "recall_title": "The Manhattan Toy Company Recalls Activity Loops Toys for Infants Due to Choking Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 648,
+  "product_title": "Sinks (excluding faucets)",
+  "recall_id": 6591,
+  "recall_title": "Technical Consumer Products Recalls LED Lamps Due to Electrical Shock Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "low",
+  "neiss_code": 1843,
+  "product_title": "Ramps or landings",
+  "recall_id": 7821,
+  "recall_title": "Porta Recalls Residential Elevators Due to Serious Fall Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1807,
+  "product_title": "Floors or flooring materials",
+  "recall_id": 9381,
+  "recall_title": "Huffy Corporation Recalls Ride-On Toys Due to Fall and Injury Hazards",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1842,
+  "product_title": "Stairs or steps (excluding pull-down and folding stairs)",
+  "recall_id": 887,
+  "recall_title": "Ballard Designs Recalls Step Stools Due to Fall Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 3274,
+  "product_title": "Swimming (activity, apparel or equipment; excluding flotation devices)",
+  "recall_id": 3520,
+  "recall_title": "Pentair Water Pool and Spa Inc. Recalls Gas Pool Heaters for Carbon Monoxide Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 612,
+  "product_title": "Runners, throw rugs or doormats (excluding bathtub mats)",
+  "recall_id": 7895,
+  "recall_title": "Running Trainer Recalls Bicycles Due to Fall Hazard; Sold Exclusively at Run4.com (Recall Alert)",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1212,
+  "product_title": "Golf (activity, apparel or equipment)",
+  "recall_id": 5177,
+  "recall_title": "Yamaha Motor Corp. Offers Free Repair For 450, 660, and 700 Model Rhino Vehicles CPSC advises consumers not to use the off-road vehicles until repaired",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 5040,
+  "product_title": "Bicycles or accessories (excluding mountain or all-terrain bicycles)",
+  "recall_id": 10924,
+  "recall_title": "Ritchey Design Recalls Carbon Bicycle Forks Due to Risk of Serious Injury or Death from Fall and Crash Hazards",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1135,
+  "product_title": "Bottles or jars, not specified",
+  "recall_id": 1902,
+  "recall_title": "Performance Packaging Recalls Children's Food Pouch Attachment Due to Choking Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1552,
+  "product_title": "Cribs, nonportable or not specified",
+  "recall_id": 10453,
+  "recall_title": "Modera Recalls Modera Pack N Play Mattresses Due to Risk of Serious Injury or Death from Entrapment; Violates Mandatory Standard for Crib Mattresses",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1135,
+  "product_title": "Bottles or jars, not specified",
+  "recall_id": 9328,
+  "recall_title": "Sun Pharma Recalls Kroger Brand Acetaminophen Due to Failure to Meet Child Resistant Packaging Requirement; Risk of Poisoning",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 5034,
+  "product_title": "Softball (activity, apparel or equipment)",
+  "recall_id": 5117,
+  "recall_title": "Sportcraft And Wilson Batting Tee Games Recalled",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1552,
+  "product_title": "Cribs, nonportable or not specified",
+  "recall_id": 9793,
+  "recall_title": "Moonsea Pack and Play Mattresses Recalled Due to Suffocation Hazard for Infants; Violation to the Federal Safety Regulation for Crib Mattresses; Sold Exclusively on Amazon.com by Moonseasleep (Recall Alert)",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 4074,
+  "product_title": "Chairs, other or not specified",
+  "recall_id": 1709,
+  "recall_title": "Brooks Furniture Recalls Glider Rockers Due to Fall Hazard; Sold Exclusively to Kaplan Early Learning",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 3246,
+  "product_title": "Swings or swing sets (excluding portable baby swings)",
+  "recall_id": 806,
+  "recall_title": "CPSC, Hedstrom\u00ae Corp. Announce Recall of Swings on Backyard Gym Sets",
+  "correct": true,
+  "kept_by_agent_filter": true
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 3277,
+  "product_title": "Exercise equipment (excluding weight lifting or gymnastic equipment)",
+  "recall_id": 600,
+  "recall_title": "Perfect Pullup Recalled by Perfect Fitness Due to Fall Injury Hazard",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 884,
+  "product_title": "Batteries",
+  "recall_id": 10794,
+  "recall_title": "Missry Associates Recalls Misco Sports Light-Up Racket Sets Due to Risk of Serious Injury or Death from Battery Ingestion; Violate Mandatory Standard for Toys",
+  "correct": true,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1878,
+  "product_title": "Doorsills or frames",
+  "recall_id": 2199,
+  "recall_title": "CPSC, Marin Mountain Bikes Announce Recall of Mountain Bikes",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1552,
+  "product_title": "Cribs, nonportable or not specified",
+  "recall_id": 9958,
+  "recall_title": "Crib Bumpers Recalled Due to Suffocation Hazard; Violation of Federal Crib Bumper Ban; Sold by Henan Ouchang Trading and Xinxiang Junshun Trading on AliExpress and Recalled by AliExpress",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1842,
+  "product_title": "Stairs or steps (excluding pull-down and folding stairs)",
+  "recall_id": 10364,
+  "recall_title": "Dorel Home Furnishings Recalls Cosco 2-Step Kitchen Steppers Due to Fall and Injury Hazards",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 1414,
+  "product_title": "Garden hoses, nozzles or sprinklers",
+  "recall_id": 894,
+  "recall_title": "CPSC, Central Sprinkler Company Announce Voluntary Recall To Replace O-Ring Fire Sprinklers",
+  "correct": false,
+  "kept_by_agent_filter": false
+ },
+ {
+  "confidence": "medium",
+  "neiss_code": 687,
+  "product_title": "Benches (excluding work benches)",
+  "recall_id": 107,
+  "recall_title": "MooreCo Recalls Ergonomic Office Chairs Due to Fall Hazard",
+  "correct": false,
+  "kept_by_agent_filter": false
+ }
+]

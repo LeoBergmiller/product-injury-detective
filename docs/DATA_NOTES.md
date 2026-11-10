@@ -636,8 +636,11 @@ codes excluded).
 
 - Titles for the 7 retired codes (1329, 1543, 1545, 1710, 1903, 3215, 5042), and the
   definitional stability of all codes across 2019-2025. Both need the 2024/2025
-  comparability tables, which are **not in `docs/`**.
-- Recall crosswalk precision: 0 of 4,398 candidates audited.
+  comparability tables. Both PDFs are now in `docs/`
+  (`2024-Comparability-Table-1.pdf`, `2025-Comparability-Table-Final.pdf`) but are **not parsed
+  yet**, so `product_code_stability.comparability_checked` is still NULL.
+- Recall crosswalk precision: only a 60-row spot check so far (below). The
+  `audited` column is still false for every row.
 - Whether the DuckDB `fts` extension can be installed in the Cloud Run image.
 - Which product codes are outside CPSC jurisdiction (underlined in the manual; lost in
   text extraction).
@@ -662,3 +665,21 @@ codes excluded).
 - The NEISS product code -> recall crosswalk. It must be text-based, because
   `CategoryID` is empty, and its matching quality is unknown.
 - Whether Census population denominators are needed.
+
+### Recall crosswalk spot check (2026-11-09)
+
+- **Sample:** 20 candidates per confidence level from `build/seeds/product_recall_xwalk.csv`
+  (rows with a `recall_id`), picked by `hash(neiss_code, recall_id, 42)` order. The
+  candidate counts are 2,682 high, 1,333 medium and 383 low.
+- **Label rule:** "correct" means the recalled product falls under that NEISS code's
+  title. Products with their own NEISS code count as wrong (high chairs under "Chairs,
+  other", step stools under "Stairs", crib mattresses under "Cribs"). One reviewer.
+- **Crosswalk precision:** high 16/20, medium 5/20, low 1/20.
+- **Agent filter** (`plausible_for_product` and `belongs_elsewhere`, as used by
+  `search_recalls` with a product code): kept 12 of the 60, 11 correct. The one wrong
+  keep is borderline: an electric scooter recall under 5024 "Scooters, unspecified".
+  It dropped 11 of the 22 correct candidates, e.g. office chairs (4074), Nerf blasters
+  (1395) and bicycle forks (5040).
+- **Reading:** links the agent shows are mostly right; absence of a link is weak
+  evidence. 20 per level is a small sample, so these are rough rates.
+- **Files:** `docs/audit/recall_xwalk_sample.json`, `build/audit_recall_sample.py`.

@@ -13,8 +13,8 @@ and have any of them been recalled?"**
 - **Path:** Text2SQL (`submission.json`).
 - **Team:** avr2141, lab2309, rl3575. Three sources, one per teammate: NEISS, CPSC
   Recalls, SaferProducts.gov.
-- **Deployed:** see `deploy_url` in `submission.json`; settings in
-  [`docs/DEPLOY.md`](docs/DEPLOY.md).
+- **Deployed:** https://REPLACE-WITH-CLOUD-RUN-URL.run.app (settings in
+  [`docs/DEPLOY.md`](docs/DEPLOY.md)).
 
 ## How it works
 
@@ -307,13 +307,22 @@ The agent says so in its first sentence, then offers what the data can show:
 - **The recall links are unreviewed.** Head-noun matching removes obvious mismatches
   but can still keep weak ones. For example, "Portable Camping Showers" counts as a
   shower recall for "Bathtubs or showers".
+  - A spot check of 60 crosswalk candidates (20 per confidence level) found that
+    16/20 high, 5/20 medium and 1/20 low candidates were the right product type.
+  - The agent's runtime filter (`search_recalls` with a product code) kept 12 of
+    the 60, and 11 of those 12 were right. It also dropped 11 of the 22 right ones,
+    so a "no reviewed recall link found" answer can miss real recalls. Labels and
+    script: [`docs/audit/recall_xwalk_sample.json`](docs/audit/recall_xwalk_sample.json),
+    `build/audit_recall_sample.py`.
 - **The low-sample flag is a project rule.** It is `n_cases < 20`; CPSC's official
   stability rule is not stated in the documents we have.
 - **Keyword searches of the case narratives are approximate.**
 - **The model's answers vary between runs** (see the observed rates above).
-  - The last live run passed **13/13** checks (`tests/test_questions.py`,
-    [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json)).
-    Earlier runs on earlier code scored 7/12, 11/12, 12/12, 8/13, 9/13, and 11/13.
+  - The last live run (2026-11-09) passed **12/13** checks (`tests/test_questions.py`).
+    The miss: asked whether a bike or a skateboard is more dangerous per hour, it gave
+    visit counts without saying the data has no exposure measure. A 13/13 run is in
+    [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json).
+    Earlier runs scored 7/12, 11/12, 12/12, 8/13, 9/13, 11/13, 13/13, and 10/13.
   - The checks themselves are partly lenient regexes.
 - **The grounding check tests that numbers exist, not that they're attributed
   correctly.** It catches invented numbers. It can't catch a real number attached
