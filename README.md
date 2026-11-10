@@ -10,6 +10,11 @@ been recalled?"**
 
 - **Who it's for:** parents, caregivers, and anyone looking after an older adult who
   wants to know what to watch out for at home.
+- **What counts as a "product":** anything NEISS gives a product code, not just
+  things you buy. That includes parts of the home (floors, stairs, bathtubs),
+  furniture (beds, chairs, tables), sports and activities (football, bicycles), and
+  everyday items (knives, toys). Floors and stairs are among the top causes of
+  injury-related ER visits, mostly from falls.
 - **What you can ask:** for example, "What sends toddlers under 5 to the ER most
   often?", "How do stair injuries compare for under-5s and adults 65+?", "Have bicycle
   injuries gone up since 2019?", or "Has anything in the top 5 for adults 65+ been
