@@ -51,6 +51,11 @@ def check(q: dict[str, Any], out: dict[str, Any]) -> list[str]:
     for group in q.get("text_any", []):
         if not any(re.search(p, text, re.IGNORECASE | re.DOTALL) for p in group):
             fails.append(f"answer matches none of {group}")
+    for cond, then in q.get("text_if", []):
+        if re.search(cond, text, re.IGNORECASE) and not re.search(
+            then, text, re.IGNORECASE | re.DOTALL
+        ):
+            fails.append(f"answer matches /{cond}/ but not /{then}/")
     for p in q.get("text_none", []):
         if re.search(p, text, re.IGNORECASE | re.DOTALL):
             fails.append(f"answer matches forbidden /{p}/")

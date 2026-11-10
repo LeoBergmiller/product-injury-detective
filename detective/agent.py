@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from agents import (
@@ -32,7 +32,14 @@ from detective.grounding import (
     refusal_first,
     ungrounded_numbers,
 )
-from detective.present import build_caveats, build_chart, build_table, drop_stated
+from detective.present import (
+    add_partial_code_note,
+    build_caveats,
+    build_chart,
+    build_table,
+    drop_stated,
+    partial_code_note,
+)
 from detective.tools import RunState, make_detective_tools, make_run_sql
 
 # Traces upload to OpenAI by default, which needs an OpenAI key. We're on Gemini.
@@ -51,6 +58,12 @@ WRAP_UP = (
     "You have reached the step limit. Do not call tools. Answer the question now, "
     "using only numbers from the tool results above. If the data cannot answer it, "
     "say so in your first sentence and why."
+)
+
+
+CONTINUE = (
+    "You stopped without answering. Continue: run any queries you still need, then "
+    "answer my previous question using only numbers from tool results."
 )
 
 
@@ -108,6 +121,8 @@ class Detective:
     agent: Agent[RunState]
     db: Database
     years: tuple[int, int] | None = None  # loaded NEISS years (detective mode)
+    # Codes not present in every loaded year: code -> (title, years_present).
+    partial_codes: dict[int, tuple[str | None, list[int]]] = field(default_factory=dict)
 
     @classmethod
     def build(cls, cfg: AgentConfig, mode: str | None = None) -> Detective:
@@ -134,7 +149,16 @@ class Detective:
                 tools=make_detective_tools(db, ctx, cfg),
             )
             first, last = ctx["coverage"]["neiss_years"]
-            return cls(cfg=cfg, mode=mode, agent=agent, db=db, years=(first, last))
+            partial = {
+                r["product_code"]: (r["product_title"], list(r["years_present"]))
+                for r in db.rows(
+                    "SELECT s.product_code, s.years_present, p.product_title "
+                    "FROM product_code_stability s LEFT JOIN product_codes p "
+                    "USING (product_code) WHERE NOT s.present_all_years"
+                )
+            }
+            return cls(cfg=cfg, mode=mode, agent=agent, db=db, years=(first, last),
+                       partial_codes=partial)
         return cls(cfg=cfg, mode=mode, agent=agent, db=db)
 
     async def _wrap_up(self, data: RunErrorHandlerInput[RunState]) -> str | None:
@@ -174,14 +198,40 @@ class Detective:
                 ),
                 timeout=self.cfg.request_timeout_s,
             )
-            response = self._full_text(result) or (
-                f"I hit my limit of {self.cfg.max_turns} steps before finishing. "
-                "Try a narrower question (one product, one age group, one year)."
+            response = self._full_text(result)
+            if not response:
+                # Gemini sometimes stops after a tool call with no text and no new
+                # call (seen on short follow-ups such as "And for kids under 5
+                # only?"). Ask it once to continue, within the same deadline.
+                LOG.warning("empty answer; asking the model to continue")
+                cont = (
+                    CONTINUE if session is not None
+                    else result.to_input_list() + [{"role": "user", "content": CONTINUE}]
+                )
+                result = await asyncio.wait_for(
+                    Runner.run(
+                        self.agent,
+                        cont,
+                        session=session,
+                        context=state,
+                        hooks=RecordToolCalls(),
+                        max_turns=self.cfg.max_turns,
+                        error_handlers={"max_turns": self._wrap_up},
+                    ),
+                    timeout=max(1.0, deadline - loop.time()),
+                )
+                response = self._full_text(result)
+            response = response or (
+                "I couldn't finish an answer to that. Try rephrasing it as a full "
+                "question (product, age group and year)."
             )
             if self.mode != "plain":
                 response = await self._ground(result, response, state, deadline)
                 response = ensure_cannot(
                     message, refusal_first(normalize_visits(response)), self.years
+                )
+                response = add_partial_code_note(
+                    response, partial_code_note(state, self.partial_codes)
                 )
         except MaxTurnsExceeded:
             response = (

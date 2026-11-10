@@ -11,6 +11,7 @@ import re
 from typing import Any
 
 from detective.config import AgentConfig
+from detective.db import filtered_product_codes
 from detective.grounding import NUM_COMMA, NUM_MILLION
 from detective.tools import RunState
 
@@ -247,6 +248,104 @@ def build_caveats(state: RunState, cfg: AgentConfig) -> list[str]:
             "spellings and include unrelated mentions."
         )
     return caveats
+
+
+AGGREGATE = re.compile(r"\b(sum|count)\s*\(", re.IGNORECASE)
+EXPLAINED = (
+    r"not comparable|fake jump|exclud|"
+    r"only (?:be )?(?:present|appears?|available|found|exists?|coded|in use)|"
+    r"(?:present|appears?|available) (?:only|in only)"
+)
+
+
+def _year_span(years: list[int]) -> str:
+    ys = sorted(years)
+    return f"{ys[0]}" if len(ys) == 1 else f"{ys[0]}-{ys[-1]}"
+
+
+def _contiguous(years: list[int]) -> bool:
+    ys = sorted(years)
+    return ys == list(range(ys[0], ys[-1] + 1))
+
+
+def _join(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def partial_code_note(
+    state: RunState, partial_codes: dict[int, tuple[str | None, list[int]]]
+) -> str | None:
+    """A sentence for the answer when a result across years filters on a product code
+    that is in use for only part of those years (e.g. 5045, e-bikes, only from 2024).
+
+    The system prompt asks the agent not to combine such codes, but it sometimes does
+    (bicycles 5033+5040+5045 "rose" from 2019 to 2025 partly because 5045 is new), so
+    this check runs in code. partial_codes maps each code not present in every loaded
+    year to (title, years_present), from product_code_stability.
+
+    Only codes present in one unbroken run of years (introduced or retired) count. A
+    small code with a gap in the middle (record players, no sampled case in 2023) is
+    a sampling zero, not a coding change.
+    """
+    flagged: dict[int, tuple[str | None, list[int]]] = {}
+    for res in state.sql_results:
+        cols = [c.lower() for c in res["columns"]]
+        # Only aggregates can combine codes into one total; a plain select from
+        # v_product_estimates lists each code's own rows (even without its column).
+        if "year" not in cols or not AGGREGATE.search(res["sql"]):
+            continue
+        i = cols.index("year")
+        shown_all = {r[i] for r in res["rows"] if isinstance(r[i], int)}
+        if len(shown_all) < 2:
+            continue
+        # One row per code and year (separate series, not a combined total): each
+        # code's years come from its own rows.
+        k = next((cols.index(c) for c in ("product_code", "code", "neiss_code")
+                  if c in cols), None)
+        for code in filtered_product_codes(res["sql"]):
+            if code not in partial_codes:
+                continue
+            shown = shown_all if k is None else {
+                r[i] for r in res["rows"] if r[k] == code and isinstance(r[i], int)}
+            title, present = partial_codes[code]
+            # Missing in some shown years, but contributing to at least one.
+            if _contiguous(present) and shown - set(present) and shown & set(present):
+                flagged[code] = (title, present)
+    if not flagged:
+        return None
+    by_span: dict[str, list[str]] = {}
+    for code, (title, present) in sorted(flagged.items()):
+        name = re.split(r"\s+\(", title, maxsplit=1)[0] if title else None
+        by_span.setdefault(_year_span(present), []).append(
+            f"{code} ({name})" if name else str(code))
+    parts = [
+        ("code " if len(codes) == 1 else "codes ") + _join(codes)
+        + (" has" if len(codes) == 1 else " have") + f" cases only in {span}"
+        for span, codes in by_span.items()
+    ]
+    return (
+        "Note: " + "; ".join(parts) + " among the loaded years. Totals that include "
+        + ("it" if len(flagged) == 1 else "them")
+        + " are not comparable across years: part of any change over time may reflect "
+        "when a product code was in use, not a change in injuries."
+    )
+
+
+def add_partial_code_note(response: str, note: str | None) -> str:
+    """Put the note after the first paragraph (where the headline change is), unless
+    the answer already says, for every flagged code, that it is only present in some
+    years or that totals with it are not comparable. Saying a code's first year is
+    not enough: "from 55 in 2019 to 15,330 in 2025" with "1552 ... 2021 (the first
+    year present)" still reads as a real jump."""
+    if not note:
+        return response
+    codes = [c for c in re.findall(r"\b\d{2,4}\b", note) if not 1900 <= int(c) <= 2100]
+    said = " ".join(response.split())
+    if all(re.search(rf"\b{c}\b[^.]*({EXPLAINED})", said, re.IGNORECASE)
+           for c in codes):
+        return response
+    head, sep, rest = response.strip().partition("\n\n")
+    return head + "\n\n" + note + (sep + rest if rest else "")
 
 
 def drop_stated(caveats: list[str], response: str) -> list[str]:

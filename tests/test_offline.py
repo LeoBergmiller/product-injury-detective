@@ -30,10 +30,12 @@ from detective.grounding import (  # noqa: E402
 )
 from detective.present import (  # noqa: E402
     COUNTS_NOT_RATES,
+    add_partial_code_note,
     build_caveats,
     build_chart,
     build_table,
     drop_stated,
+    partial_code_note,
 )
 from detective.recall_match import plausible_for_product, product_nouns  # noqa: E402
 from detective.tools import RunState  # noqa: E402
@@ -325,6 +327,91 @@ def test_presentation() -> None:
     assert build_chart(reports, CFG) is None
 
 
+def _trend_state(sql: str, years: list[int]) -> RunState:
+    st = RunState()
+    st.record("run_sql", {"query": sql}, json.dumps({
+        "columns": ["year", "n_cases", "est_visits"],
+        "rows": [[y, 1000, 50000.0] for y in years], "truncated": False}),
+        "Product-Injury Detective")
+    return st
+
+
+def test_partial_code_note() -> None:
+    """A trend that combines a code missing from some shown years (5045, e-bikes,
+    only 2024-2025) gets a note in the answer; codes present every year don't."""
+    years = list(range(2019, 2026))
+    assert 5045 in DET.partial_codes and 1233 not in DET.partial_codes
+    st = _trend_state(
+        "SELECT year, COUNT(*) AS n_cases, SUM(weight) AS est_visits FROM neiss_cases "
+        "WHERE product_1 IN (5033, 5040, 5045) OR product_2 IN (5033, 5040, 5045) "
+        "OR product_3 IN (5033, 5040, 5045) GROUP BY year", years)
+    note = partial_code_note(st, DET.partial_codes)
+    assert note and "code 5045" in note and "2024-2025" in note, note
+    assert "5033" not in note and "5040" not in note, note
+    out = add_partial_code_note("Visits went from 417,673 in 2019 to 540,881.\n\n"
+                                "- 2019: 417,673\n- 2025: 540,881", note)
+    assert out.split("\n\n")[1] == note, "note goes right after the headline"
+    # The note says "comparable", so the generic comparability caveat isn't repeated.
+    assert not any(c.startswith("Product-code definitions")
+                   for c in drop_stated(build_caveats(st, CFG), out))
+    # Already explained by the agent: no second note.
+    said = "Code 5045 (e-bikes) only appears from 2024, so 2019 is not comparable."
+    assert add_partial_code_note(said, note) == said
+    # Naming the first year is not an explanation (live crib answer, 2026-11-10).
+    crib = ("Cribs went from 55 visits in 2019 to 15,330 in 2025.\n\nCode 1552 went "
+            "from 13,025 in 2021 (the first year present in the data) to 15,102.")
+    st = _trend_state("SELECT year, SUM(weight) AS est_visits FROM neiss_cases WHERE "
+                      "product_1 IN (1529, 1552) GROUP BY year", years)
+    out = add_partial_code_note(crib, partial_code_note(st, DET.partial_codes))
+    assert "Note: code 1552" in out.split("\n\n")[1], out
+    for ok in ("Code 5045 is only present in 2024 and 2025.",
+               "E-bikes (code 5045) are present in only 2 of the loaded years.",
+               "E-bike code 5045 was excluded to avoid a fake jump."):
+        assert add_partial_code_note(ok, note) == ok, ok
+    # A plain select of several codes (no SUM/COUNT) lists separate series, even
+    # when the code column is left out: no note.
+    st = _trend_state("SELECT year, n_cases, est_visits FROM v_product_estimates "
+                      "WHERE product_code IN (1529, 1552) ORDER BY product_code, year",
+                      years)
+    assert partial_code_note(st, DET.partial_codes) is None
+    # A code present in every year: no note.
+    st = _trend_state("SELECT year, n_cases, est_visits FROM v_product_estimates "
+                      "WHERE product_code = 1233 AND age_group = 'all'", years)
+    assert partial_code_note(st, DET.partial_codes) is None
+    # Only years where 5045 exists: comparable, no note. One year: not a trend.
+    st = _trend_state("SELECT year, SUM(est_visits) AS est_visits FROM "
+                      "v_product_estimates WHERE product_code IN (5040, 5045) "
+                      "GROUP BY year", [2024, 2025])
+    assert partial_code_note(st, DET.partial_codes) is None
+    st = _trend_state("SELECT year, n_cases, est_visits FROM v_product_estimates "
+                      "WHERE product_code = 5045", [2025])
+    assert partial_code_note(st, DET.partial_codes) is None
+    # A gap in the middle (record players 563: no sampled case in 2023; can openers
+    # 401: none in 2022) is a sampling zero, not a coding change: no note.
+    st = _trend_state("SELECT year, SUM(est_visits) AS est_visits FROM "
+                      "v_product_estimates WHERE product_code IN (563, 401) "
+                      "GROUP BY year", years)
+    assert partial_code_note(st, DET.partial_codes) is None
+    # Separate series per code (cribs 1529 every year, 1552 from 2021): nothing is
+    # combined, so no note.
+    st = RunState()
+    st.record("run_sql", {"query": "SELECT product_code, year, SUM(est_visits) FROM "
+                          "v_product_estimates WHERE product_code IN (1529, 1552) "
+                          "GROUP BY product_code, year"},
+              json.dumps({"columns": ["product_code", "year", "est_visits"],
+                          "rows": [[1529, y, 5000.0] for y in years]
+                          + [[1552, y, 13000.0] for y in range(2021, 2026)],
+                          "truncated": False}), "Product-Injury Detective")
+    assert partial_code_note(st, DET.partial_codes) is None
+    # Codes with the same years are grouped, with full titles.
+    st = _trend_state("SELECT year, SUM(est_visits) AS est_visits FROM "
+                      "v_product_estimates WHERE product_code IN (5022, 5023, 5024, "
+                      "5025) GROUP BY year", years)
+    note = partial_code_note(st, DET.partial_codes)
+    assert note and "codes 5022 (Scooters, powered), 5023" in note, note
+    assert note.count("2020-2025") == 1, note
+
+
 def test_age_comparison() -> None:
     st = RunState()
     st.record("run_sql", {"query": "SELECT age_group, n_cases, est_visits FROM "
@@ -459,6 +546,61 @@ def test_grounding_respects_deadline() -> None:
     assert asyncio.run(run()) == "There were 9,999 visits."
     assert st.ungrounded == ["9,999"]
     assert st.tool_calls[-1]["result"] == "rewrite not used"
+
+
+def _fake_runner(outputs: list[str], calls: list[Any]):
+    """A stand-in for Runner.run that returns the given final outputs in order."""
+
+    class Result:
+        def __init__(self, text: str) -> None:
+            self.final_output, self.new_items = text, []
+
+        def to_input_list(self) -> list:
+            return [{"role": "user", "content": "earlier turn"}]
+
+    async def run(agent: Any, inp: Any, **kw: Any) -> Result:
+        calls.append((inp, kw.get("session")))
+        return Result(outputs[len(calls) - 1])
+
+    return run
+
+
+def test_empty_answer_retry() -> None:
+    """Gemini sometimes ends a turn with no text after a tool call. ask() asks it to
+    continue once; it never blames the step limit for an empty answer."""
+    import asyncio
+
+    import detective.agent as agent_mod
+
+    real = agent_mod.Runner.run
+    answer = "Trampolines were linked to many injury-related ER visits in that year."
+    try:
+        # Empty, then an answer: the retry's answer is used (with and without session).
+        for session in (None, object()):
+            calls: list[Any] = []
+            agent_mod.Runner.run = _fake_runner(["", answer], calls)
+            out = asyncio.run(DET.ask("And for kids under 5 only?", session=session))
+            assert out["response"].startswith(answer), out["response"]
+            assert len(calls) == 2, calls
+            inp, sess = calls[1]
+            if session is None:  # no session: the history is passed explicitly
+                assert isinstance(inp, list) and inp[0]["content"] == "earlier turn"
+                assert "Continue" in inp[-1]["content"]
+            else:  # session: only the nudge; the session supplies the history
+                assert isinstance(inp, str) and "Continue" in inp and sess is session
+        # Empty twice: an honest message, not "I hit my limit".
+        calls = []
+        agent_mod.Runner.run = _fake_runner(["", ""], calls)
+        out = asyncio.run(DET.ask("And for kids under 5 only?"))
+        assert out["response"].startswith("I couldn't finish an answer"), out
+        assert "limit" not in out["response"] and len(calls) == 2
+        # A normal answer: no retry.
+        calls = []
+        agent_mod.Runner.run = _fake_runner([answer], calls)
+        out = asyncio.run(DET.ask("How many trampoline injuries in 2024?"))
+        assert out["response"].startswith(answer) and len(calls) == 1
+    finally:
+        agent_mod.Runner.run = real
 
 
 def test_app_sessions_and_input() -> None:

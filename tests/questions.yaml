@@ -43,9 +43,11 @@ questions:
   - id: bicycle_by_year
     kind: normal
     question: "How have ER visits involving bicycles changed from 2019 to 2025?"
-    expect: "Code 5040: 408,353 (2019) -> 420,962 (2025). Codes 5033+5040, each case once: 417,673 -> 439,536. Must mention code comparability"
+    expect: "Code 5040: 408,353 (2019) -> 420,962 (2025). Codes 5033+5040, each case once: 417,673 -> 439,536. Codes 5033+5040+5045: 417,673 -> 540,881, only with the note that 5045 starts in 2024. Must mention code comparability"
     tools_any: [run_sql]
-    text_any: [["408,353|408,000|408 thousand|0\\.41 million|417,673|418,000"], ["420,962|421,000|421 thousand|0\\.42 million|439,536|440,000"], ["defin|coding|comparab|chang"]]
+    text_any: [["408,353|408,000|408 thousand|0\\.41 million|417,673|418,000"], ["420,962|421,000|421 thousand|0\\.42 million|439,536|440,000|540,881|541,000|0\\.54 million"], ["defin|coding|comparab|chang"]]
+    # Including e-bikes (5045, only coded from 2024) is allowed only with the note.
+    text_if: [["540,881|541,000|0\\.54 million", "5045[^.]*(only|first|introduced|new|start|not comparable)"]]
   - id: floors_share_65
     kind: normal
     question: "What share of ER visits by adults 65+ in 2025 involved floors?"
