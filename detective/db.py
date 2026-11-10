@@ -161,6 +161,32 @@ def guardrail_message(query: str) -> str | None:
     return None
 
 
+_CODE_COL = r"(?:\w+\.)?(?:product_code|product_[123]|neiss_code)"
+_NUM_LIST = r"\(\s*(\d+(?:\s*,\s*\d+)*)\s*\)"
+_COL_LIST = rf"\(\s*{_CODE_COL}(?:\s*,\s*{_CODE_COL})*\s*\)"
+CODE_FILTERS = [
+    re.compile(rf"\b{_CODE_COL}\s*==?\s*(\d+)\b", re.IGNORECASE),         # col = N
+    re.compile(rf"\b(\d+)\s*==?\s*{_CODE_COL}\b", re.IGNORECASE),         # N = col
+    re.compile(rf"\b{_CODE_COL}\s+(?:not\s+)?in\s*{_NUM_LIST}", re.IGNORECASE),
+    re.compile(rf"\b(\d+)\s+(?:not\s+)?in\s*{_COL_LIST}", re.IGNORECASE),  # N IN (cols)
+]
+
+
+def filtered_product_codes(query: str) -> set[int]:
+    """The literal product codes a query compares product columns with.
+
+    Catches `product_code = N`, `N = product_code`, `product_1 IN (N, M)` and
+    `N IN (product_1, product_2, product_3)` (any table alias; also neiss_code).
+    A subquery such as `product_code IN (SELECT ...)` has no literal codes.
+    """
+    code = _strip_sql_comments_and_strings(query)
+    found: set[int] = set()
+    for pattern in CODE_FILTERS:
+        for m in pattern.finditer(code):
+            found.update(int(n) for n in re.findall(r"\d+", m.group(1)))
+    return found
+
+
 def select_only_error(con: duckdb.DuckDBPyConnection, query: str) -> str | None:
     """Exactly one SELECT statement, or an error message."""
     try:

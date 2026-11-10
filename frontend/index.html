@@ -7,27 +7,39 @@
 <style>
   :root {
     --ink: #1d2433; --muted: #5d6677; --line: #dde1e8; --bg: #f6f7f9; --card: #fff;
-    --accent: #b4442a; --accent-soft: #fbeee9; --bar: #2f6f8f; --warn: #8a5a00;
+    --accent: #b4442a; --accent-dark: #93361f; --accent-soft: #fbeee9; --accent-line: #f0cfc4; --bar: #2f6f8f; --warn: #8a5a00;
     --warn-bg: #fff6e0;
   }
   * { box-sizing: border-box; }
   body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
          color: var(--ink); background: var(--bg); }
-  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  header { background: var(--card); border-top: 4px solid var(--accent); border-bottom: 1px solid var(--line); }
+  ::selection { background: var(--accent-soft); color: var(--accent-dark); }
   .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
-  .hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; padding: 26px 0 20px; }
-  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.01em; }
+  header .wrap { max-width: 1180px; }
+  .hero { display: grid; grid-template-columns: 1.25fr 1fr 0.8fr; gap: 28px; padding: 26px 0 20px; }
+  h1 { margin: 0 0 8px; font-size: 36px; line-height: 1.1; letter-spacing: -0.02em; }
   h1 span { color: var(--accent); }
+  .tagline { margin: 0 0 10px; font-size: 19px; font-weight: 600; line-height: 1.3; color: var(--ink); }
   .lede { margin: 0 0 10px; color: var(--muted); }
   .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .fact { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
-  .fact b { display: block; font-size: 18px; }
-  .fact small { color: var(--muted); }
+  .label { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+           text-transform: uppercase; color: var(--muted); }
+  .facts + .label { margin-top: 14px; }
+  .fact { display: flex; flex-direction: column; }
+  .fact b { display: block; font-size: 18px; line-height: 1.3; color: var(--accent); }
+  .fact span { font-size: 13px; line-height: 1.35; color: var(--ink); }
+  .fact small { margin-top: auto; padding-top: 6px; font-size: 11px; line-height: 1.35; color: var(--muted); white-space: nowrap; }
   .how { font-size: 14px; color: var(--muted); }
-  .how ol { margin: 6px 0 0; padding-left: 18px; }
-  .how .note { margin: 8px 0 0; }
+  .how ol { margin: 0; padding-left: 18px; }
+  .how li::marker { color: var(--accent); font-weight: 700; }
+  .how .note { margin: 10px 0 0; padding: 8px 10px; background: var(--accent-soft);
+               border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; }
+  .how .note b { color: var(--accent-dark); }
+  .limits .note { margin: 0; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 18px; }
-  .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px;
+  .chip { border: 1px solid var(--accent); background: var(--card); border-radius: 999px;
           padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; color: var(--ink); }
   .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
   /* main also has class "wrap", whose padding would win over a plain `main` rule and
@@ -57,12 +69,14 @@
      for the column, so short names like "Munchkin" are never cut. */
   td { overflow-wrap: break-word; min-width: 3em; }
   th, td.num, td.id { white-space: nowrap; }
-  th { position: sticky; top: 0; background: #eef1f5; }
+  th { position: sticky; top: 0; background: #eef1f5; box-shadow: inset 0 -2px 0 var(--accent-line); }
   th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .tablenote { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
   .tablenote:empty { display: none; }
   details { margin-top: 12px; font-size: 13px; }
   summary { cursor: pointer; color: var(--muted); }
+  summary::marker { color: var(--accent); }
+  summary:hover { color: var(--accent); }
   .call { border-left: 3px solid var(--line); margin: 8px 0; padding: 4px 10px; }
   .call.rejected { border-color: var(--accent); }
   .call code, .call pre { font: 12px/1.4 ui-monospace, Menlo, monospace; }
@@ -71,10 +85,14 @@
   form { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line); }
   form .wrap { display: flex; gap: 8px; padding: 12px 20px; }
   textarea { flex: 1; resize: none; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; height: 46px; }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   button.send { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 0 18px; font: inherit; cursor: pointer; }
+  button.send:hover:not(:disabled) { background: var(--accent-dark); }
   button.ghost { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; font: inherit; cursor: pointer; color: var(--muted); }
+  button.ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
   button:disabled { opacity: .5; cursor: wait; }
   .thinking { color: var(--muted); font-style: italic; }
+  @media (max-width: 1000px) { .hero { grid-template-columns: 1.25fr 1fr; } .limits { grid-column: 1 / -1; } }
   @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .facts { grid-template-columns: 1fr 1fr 1fr; } }
 </style>
 </head>
@@ -84,25 +102,33 @@
     <div class="hero">
       <div>
         <h1>Safety <span>Detective</span></h1>
-        <p class="lede"><b>Help keep the people you care about safe.</b> See which
+        <p class="tagline">Help keep the people you care about safe.</p>
+        <p class="lede">See which
           everyday products and hazards most often send people to the emergency room at
-          each age, from toddlers to grandparents, so you know what to watch out for. Then
+          each age, from babies to grandparents, so you know what to watch out for. Then
           check whether any of them have been recalled. Built for parents, caregivers, and
           anyone looking after an older adult. Ask in plain English: the detective looks
           it up in U.S. Consumer Product Safety Commission data and shows how it got every
           number.</p>
       </div>
       <div class="how">
+        <h2 class="label">The data it searches</h2>
         <div class="facts">
-          <div class="fact"><b>2.4M</b><small>ER injury cases, 2019-2025</small></div>
-          <div class="fact"><b>10,082</b><small>product recalls</small></div>
-          <div class="fact"><b>71,858</b><small>consumer safety reports</small></div>
+          <div class="fact"><b>2.4M</b><span>ER visits sampled from U.S. hospitals</span>
+            <small>NEISS<br>2019–2025</small></div>
+          <div class="fact"><b>10,082</b><span>product recalls</span>
+            <small>CPSC recalls<br>1973–2026</small></div>
+          <div class="fact"><b>71,858</b><span>injury reports from the public</span>
+            <small>SaferProducts.gov<br>2011–2026</small></div>
         </div>
+        <h2 class="label">How to use it</h2>
         <ol>
-          <li>Ask about a product, any age group, or a year, or try an example below.</li>
+          <li>Ask about a product, any age group, or use a starter query below.</li>
           <li>Read the answer, then the table and chart.</li>
           <li>Open "How I found this" to see every query it ran.</li>
         </ol>
+      </div>
+      <div class="how limits">
         <p class="note"><b>What it can't tell you:</b> how risky something is per use (it
           counts ER visits, not how often things are used), whether one age group is
           "riskier" (it has no population counts), which brand or model is safer, or what
@@ -127,10 +153,12 @@
   // One request at a time: POST /chat returns
   // { response, session_id, tool_calls[{name,args,result,agent}], table?, chart?, caveats, mode }.
   const EXAMPLES = [
-    "How many ER visits were there for children under 5 in 2025?",
+    "I have a toddler. What should I watch out for?",
     "Which products send the most adults 65+ to the ER, and have any been recalled?",
     "How do stair injuries compare for children under 5 and adults 65+ in 2025?",
+    "How have trampoline injuries changed since 2019?",
     "What body parts are injured most on trampolines?",
+    "What do people report to SaferProducts.gov about baby strollers?",
     "Which brand of stroller is most dangerous?",
   ];
   let sessionId = null;
@@ -153,6 +181,18 @@
   // Identifier columns (codes, years, ids, ranks) are shown raw, never as 1,807.
   const isIdCol = (c) => /(^|_)(code|codes|id|year|rank|psu|seq|number)$/i.test(String(c));
   // Display-only short product label: text before the first "(" or ",".
+  // Readable names for the common result columns (tables and chart legends); the
+  // raw column name stays in the header's tooltip and in "How I found this".
+  const PRETTY = {
+    est_visits: "Estimated visits", n_cases: "Sample cases", low_sample: "Low sample",
+    year: "Year", age_group: "Age group", product_title: "Product",
+    product_code: "Product code", rank: "Rank", report_date: "Report date",
+    publication_date: "Published", brand: "Brand", model: "Model",
+    severity_label: "Severity", description: "What happened",
+    product_description: "Product", victim_age_years: "Age (years)",
+    incident_report_id: "Report ID", recall_date: "Recall date", title: "Title",
+  };
+  const pretty = (s) => PRETTY[s] ?? s;
   const shortLabel = (s, n = 30) => {
     const t = String(s).split(/[(,]/)[0].trim() || String(s);
     return t.length > n ? t.slice(0, n - 1) + "…" : t;
@@ -171,7 +211,7 @@
     const ids = t.columns.map(isIdCol);
     const numCol = t.columns.map((_, i) => !ids[i]
       && t.rows.every((r) => r[i] === null || typeof r[i] === "number"));
-    const head = t.columns.map((c, i) => `<th class="${numCol[i] ? "num" : ""}">${esc(c)}</th>`).join("");
+    const head = t.columns.map((c, i) => `<th class="${numCol[i] ? "num" : ""}" title="${esc(c)}">${esc(pretty(c))}</th>`).join("");
     const body = t.rows.map((r) => "<tr>" + r.map((v, i) => ids[i]
       ? `<td class="id">${esc(v === null ? "" : v)}</td>`
       : `<td class="${typeof v === "number" ? "num" : ""}">${fmt(v)}</td>`).join("") + "</tr>").join("");
@@ -214,7 +254,7 @@
     if (series.length > 1) {
       series.forEach((sname, k) => {
         svg += `<rect x="${labelW + k * 150}" y="2" width="10" height="10" fill="${COLORS[k % 4]}"/>
-          <text x="${labelW + k * 150 + 14}" y="11">${esc(shortLabel(sname, 22))}</text>`;
+          <text x="${labelW + k * 150 + 14}" y="11">${esc(shortLabel(pretty(sname), 22))}</text>`;
       });
     }
     xs.forEach((x, i) => {
@@ -224,7 +264,7 @@
         const d = c.data.find((e) => e.x === x && (e.series ?? "") === sname);
         if (!d) return;
         const y = y0 + k * barH, bw = Math.max(1, (d.y / max) * plotW);
-        svg += `<rect x="${labelW}" y="${y}" width="${bw}" height="${barH - 3}" rx="2" fill="${COLORS[k % 4]}"><title>${esc(x)}${sname ? " · " + esc(sname) : ""}: ${fmt(d.y)}</title></rect>
+        svg += `<rect x="${labelW}" y="${y}" width="${bw}" height="${barH - 3}" rx="2" fill="${COLORS[k % 4]}"><title>${esc(x)}${sname ? " · " + esc(pretty(sname)) : ""}: ${fmt(d.y)}</title></rect>
           <text x="${labelW + bw + 5}" y="${y + barH - 5}">${short(d.y)}</text>`;
       });
     });
@@ -251,12 +291,12 @@
       pts.sort((a, b) => a.x - b.x);
       const col = colors[i % colors.length];
       svg += `<polyline fill="none" stroke="${col}" stroke-width="2.5" points="${pts.map((p) => `${px(p.x)},${py(p.y)}`).join(" ")}"/>`;
-      svg += pts.map((p) => `<circle cx="${px(p.x)}" cy="${py(p.y)}" r="3.5" fill="${col}"><title>${esc(name)} ${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join("");
+      svg += pts.map((p) => `<circle cx="${px(p.x)}" cy="${py(p.y)}" r="3.5" fill="${col}"><title>${esc(pretty(name))} ${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join("");
       const last = pts[pts.length - 1];
-      const nm = shortLabel(name, 22);
+      const nm = shortLabel(pretty(name), 22);
       svg += `<text x="${px(last.x) + 8}" y="${py(last.y) + 4}" fill="${col}" style="fill:${col}">${esc(nm)}</text>`;
     });
-    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(c.y)} by year">${svg}</svg>`;
+    return `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(pretty(c.y))} by year">${svg}</svg>`;
   }
 
   function renderCalls(calls) {

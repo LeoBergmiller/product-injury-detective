@@ -42,12 +42,32 @@ def singular(word: str) -> str:
     return w
 
 
+# Modifiers that don't narrow the kind of product ("Baby strollers" are strollers).
+GENERIC_MODIFIER = {
+    "baby", "infant", "child", "children", "kid", "toddler", "adult", "youth",
+    "junior", "home", "household", "portable", "other",
+}
+
+
 def product_nouns(neiss_title: str) -> set[str]:
-    """Content words of the title's first clause: 'Floors or flooring materials'
-    -> {floor, flooring}."""
+    """The product nouns of the title's first clause, one per 'or' part: its head
+    (last content word), with a specific modifier kept as a two-word term.
+
+    'Floors or flooring materials' -> {floor, flooring}; 'Baby strollers' ->
+    {stroller}; 'Car seats (for infants or children)' -> {'car seat'}, so baby bath
+    seats and golf cars no longer count as car-seat recalls.
+    """
     first = re.split(r"[(,]", neiss_title, maxsplit=1)[0]
-    words = {singular(w) for w in re.findall(r"[A-Za-z]+", first)}
-    return {w for w in words if w not in STOP and len(w) >= 3}
+    out: set[str] = set()
+    for part in re.split(r"\bor\b|/", first):
+        words = [singular(w) for w in re.findall(r"[A-Za-z]+", part)]
+        words = [w for w in words if w not in STOP]
+        if not words or len(words[-1]) < 3:
+            continue
+        head = words[-1]
+        mod = words[-2] if len(words) >= 2 else None
+        out.add(f"{mod} {head}" if mod and mod not in GENERIC_MODIFIER else head)
+    return out
 
 
 def phrase_words(phrase: str) -> list[str]:
@@ -121,13 +141,17 @@ def plausible_for_product(
     m = TITLE_PRODUCT.search(title or "")
     if m:
         texts.append(m.group(1))
+    heads = {n.split()[-1]: n.split()[:-1] for n in nouns}
     for t in texts:
         words = phrase_words(t)
-        if not words or words[-1] not in nouns:
+        if not words or words[-1] not in heads:
             continue
         if len(words) >= 2 and words[-2] in OTHER_KIND:
             continue
-        return words[-1]
+        # A two-word NEISS term ('car seat') needs its modifier in the phrase too.
+        if any(m not in words[:-1] for m in heads[words[-1]]):
+            continue
+        return " ".join([*heads[words[-1]], words[-1]])
     return None
 
 

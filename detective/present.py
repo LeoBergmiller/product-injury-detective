@@ -16,6 +16,9 @@ from detective.tools import RunState
 
 Y_PREFERENCE = ("est_visits", "estimated_visits", "est", "weighted", "visits")
 NOT_Y = {"year", "rank", "product_code", "code", "neiss_code", "recall_id", "psu"}
+# IDs and ages are attributes of a row, not amounts: charting them as bar heights
+# (e.g. SaferProducts incident_report_id or victim_age_years by date) is meaningless.
+NOT_Y_PATTERN = re.compile(r"(^|_)id$|_number$|(^|_)age(_|$)")
 # Unweighted sample counts: never the main series when a weighted column exists.
 SAMPLE_COUNT = re.compile(r"^(n|n_cases|cases|sample_cases|case_count|num_cases|n_sample)$")
 MAX_LINE_SERIES = 6
@@ -118,7 +121,8 @@ def build_chart(
         if all(_is_num(r[i]) or r[i] is None for r in rows)
         and any(_is_num(r[i]) for r in rows)
     ]
-    y_candidates = [c for c in numeric if c.lower() not in NOT_Y]
+    y_candidates = [c for c in numeric
+                    if c.lower() not in NOT_Y and not NOT_Y_PATTERN.search(c.lower())]
     if not y_candidates:
         return None
     y = next(
@@ -250,4 +254,5 @@ def drop_stated(caveats: list[str], response: str) -> list[str]:
     comparisons with the counts-not-rates sentence itself), so it isn't shown twice."""
     said = " ".join(response.lower().split())
     return [c for c in caveats
-            if re.split(r"[:;.]", c, maxsplit=1)[0].lower() not in said]
+            if re.split(r"[:;.]", c, maxsplit=1)[0].lower() not in said
+            and not (c.startswith("Product-code definitions") and "comparab" in said)]

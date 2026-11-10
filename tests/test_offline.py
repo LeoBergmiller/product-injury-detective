@@ -17,10 +17,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from agents.tool_context import ToolContext  # noqa: E402
+from agents.tool_guardrails import ToolInputGuardrailData  # noqa: E402
 
 from detective.agent import Detective  # noqa: E402
 from detective.config import AgentConfig  # noqa: E402
-from detective.db import guardrail_message  # noqa: E402
+from detective.db import filtered_product_codes, guardrail_message  # noqa: E402
 from detective.grounding import (  # noqa: E402
     ensure_cannot,
     normalize_visits,
@@ -81,6 +82,63 @@ def test_literal_select_rejected() -> None:
         "SELECT '0-4' AS age_group, 3701 AS n_cases UNION ALL SELECT '65+', 8865")
     assert guardrail_message("SELECT 1") is not None
     assert guardrail_message("SELECT * FROM v_top_products LIMIT 1") is None
+
+
+def test_filtered_product_codes() -> None:
+    cases = {
+        "SELECT * FROM v_product_estimates WHERE product_code = 1531": {1531},
+        "SELECT * FROM v_case_products p WHERE p.product_code IN (1522, 1523)": {1522, 1523},
+        "SELECT * FROM neiss_cases WHERE 1842 IN (product_1, product_2, product_3)": {1842},
+        "SELECT * FROM neiss_cases WHERE product_1 IN (1807) OR product_2 IN (1807)": {1807},
+        "SELECT * FROM v_recalls_for_product WHERE neiss_code=4076": {4076},
+        "SELECT * FROM v_top_products WHERE product_code <> 5555 AND year = 2025": set(),
+        # a subquery has no literal codes; years and ranks are not codes
+        "SELECT * FROM v_case_products WHERE product_code IN (SELECT product_code "
+        "FROM v_top_products WHERE year = 2025 AND rank <= 10)": set(),
+        "SELECT * FROM v_top_products WHERE year = 2025 -- product_code = 1531": set(),
+    }
+    for q, want in cases.items():
+        assert filtered_product_codes(q) == want, (q, filtered_product_codes(q))
+
+
+def _code_guard(tool: str, args: dict[str, Any], state: RunState) -> str | None:
+    """The product-code guardrail's rejection message for one call, or None."""
+    guard = next(g for g in TOOLS[tool].tool_input_guardrails
+                 if g.get_name() == "product_code_guardrail")
+    ctx = ToolContext(context=state, tool_name=tool, tool_call_id="t",
+                      tool_arguments=json.dumps(args))
+    out = asyncio.run(guard.run(ToolInputGuardrailData(context=ctx, agent=DET.agent)))
+    return None if out.behavior["type"] == "allow" else str(out.output_info or
+                                                             out.behavior.get("message"))
+
+
+def test_guessed_product_code_rejected() -> None:
+    q = {"query": "SELECT * FROM v_product_estimates WHERE product_code = 1531"}
+    state = RunState()
+    msg = _code_guard("run_sql", q, state) or ""
+    assert "1531" in msg and "bicycle-mounted" in msg and "lookup_codes" in msg, msg
+    assert state.tool_calls and "rejected" in state.tool_calls[-1]["result"]
+    assert _code_guard("search_recalls", {"keywords": "stroller", "product_code": 1531},
+                       RunState())
+    # After a lookup that returns the code, the same query passes.
+    state.record("lookup_codes", {"kind": "product", "query": "stroller"},
+                 json.dumps({"matches": [{"code": 1522, "title": "Baby strollers"}]}),
+                 "a")
+    ok = {"query": "SELECT * FROM v_product_estimates WHERE product_code = 1522"}
+    assert _code_guard("run_sql", ok, state) is None
+    assert _code_guard("search_recalls", {"keywords": "stroller", "product_code": 1522},
+                       state) is None
+    # Codes seen in an earlier query result count too (e.g. from v_top_products).
+    state.record("run_sql", {"query": "SELECT ..."},
+                 json.dumps({"columns": ["rank", "product_code"], "rows": [[1, 1807]]}),
+                 "a")
+    assert _code_guard("run_sql", {"query": "SELECT * FROM v_case_products "
+                                   "WHERE product_code = 1807"}, state) is None
+    # The 5555 placeholder may always be excluded; queries with no codes pass.
+    assert _code_guard("run_sql", {"query": "SELECT * FROM neiss_cases WHERE "
+                                   "5555 NOT IN (product_1, product_2, product_3)"},
+                       RunState()) is None
+    assert _code_guard("search_recalls", {"keywords": "stroller"}, RunState()) is None
 
 
 def test_visits_wording() -> None:
@@ -216,6 +274,22 @@ def test_recall_relevance() -> None:
     beds = product_nouns("Beds or bedframes, other or not specified")
     assert plausible_for_product("Y Recalls Raised Garden Bed Due to Fire", [],
                                  beds) is None
+    # A specific modifier must match too: bath seats and golf cars are not car seats.
+    car_seats = product_nouns("Car seats (for infants or children)")
+    assert car_seats == {"car seat"}
+    assert plausible_for_product("X Recalls Baby Bath Seats Due to Drowning", [],
+                                 car_seats) is None
+    assert plausible_for_product("Yamaha Recalls Fleet Golf Cars Due to Crash", [],
+                                 car_seats) is None
+    assert plausible_for_product("Z Recalls Convertible Car Seats Due to Fall", [],
+                                 car_seats) == "car seat"
+    # A generic modifier is optional ("Baby strollers" are strollers), and "baby" alone
+    # is no longer a product word, so baby bath seats are not stroller recalls.
+    strollers = product_nouns("Baby strollers")
+    assert plausible_for_product("AliExpress Recalls Convertible Strollers Due to Fall",
+                                 [], strollers) == "stroller"
+    assert plausible_for_product("Baby Bath Seats Recalled Due to Drowning",
+                                 ["Baby Bath Seats"], strollers) is None
 
 
 def test_presentation() -> None:
@@ -241,6 +315,14 @@ def test_presentation() -> None:
     assert {d["series"] for d in chart["data"]} == {"bicycles", "e_bicycles"}
     cav = build_caveats(st, CFG)
     assert any("not rates" in c for c in cav), "years comparison needs the rates note"
+    # A list of SaferProducts reports has no amount to chart: ids and ages are not
+    # bar heights.
+    reports = {"columns": ["incident_report_id", "report_date", "brand",
+                           "victim_age_years", "description"],
+               "rows": [[6298905, "2026-10-13", "Munchkin", 1, "tipped"],
+                        [6298809, "2026-10-11", "Joie", 1, "almost fell"]],
+               "truncated": False, "sql": ""}
+    assert build_chart(reports, CFG) is None
 
 
 def test_age_comparison() -> None:
@@ -315,6 +397,11 @@ def test_caveat_not_repeated() -> None:
                        answer) == ["Recalls shown are possible matches."]
     assert drop_stated([COUNTS_NOT_RATES], "There were 81,016 visits.") == [
         COUNTS_NOT_RATES]
+    comparab = ("Product-code definitions across years have not been checked against "
+                "CPSC's comparability tables, so year-to-year changes may reflect coding.")
+    said = "Product-code comparability across years has not been checked, so ..."
+    assert drop_stated([comparab], said) == []
+    assert drop_stated([comparab], "There were 81,016 visits.") == [comparab]
 
 
 def test_refusal_first() -> None:

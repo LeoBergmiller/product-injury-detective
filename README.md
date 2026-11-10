@@ -15,7 +15,7 @@ been recalled?"**
   furniture (beds, chairs, tables), sports and activities (football, bicycles), and
   everyday items (knives, toys). Floors and stairs are among the top causes of
   injury-related ER visits, mostly from falls.
-- **What you can ask:** for example, "What sends toddlers under 5 to the ER most
+- **What you can ask:** for example, "What sends babies and toddlers under 5 to the ER most
   often?", "How do stair injuries compare for under-5s and adults 65+?", "Have bicycle
   injuries gone up since 2019?", or "Has anything in the top 5 for adults 65+ been
   recalled?"
@@ -64,7 +64,12 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
   - range filters on raw `age_raw`;
   - grouping by `product_1` alone;
   - `SUM(weight)` across products in the long product table (double counting);
-  - summing several products' rows of `v_product_estimates` / `v_top_products`.
+  - summing several products' rows of `v_product_estimates` / `v_top_products`;
+  - a product code that no tool returned in this turn (in `run_sql` and
+    `search_recalls`). The model guesses codes from memory: it used 1531
+    (bicycle-mounted baby carriers) and 1509 (baby bottles) for strollers, which are
+    1522. The rejection names the code's real title, and the agent then calls
+    `lookup_codes`.
 - **Grounding check.**
   - After each answer, every count (including bare numbers like 257), million and
     percentage must match a value in that turn's tool results.
@@ -157,8 +162,8 @@ same model (`gemini-3.5-flash-lite`) with no tools and no system prompt
     only 856,149.
 - **Agent** (final test run,
   [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json)):
-  > There were an estimated 1,469,070 injury-related ER visits (from a sample of
-  > 57,638 cases) for children under 5 in 2025.
+  > There were an estimated 1,469,070 injury-related ER visits (based on 57,638
+  > sample cases) for children under 5 in 2025.
 - **No tools, no system prompt:**
   > I do not have access to real-time data or statistics for the year 2025, as my
   > knowledge is current up to January 2025 ... please check reports from the CDC,
@@ -181,16 +186,23 @@ same model (`gemini-3.5-flash-lite`) with no tools and no system prompt
   - Beds: possible matches (not reviewed), e.g. the Merax Murphy Beds recall
     (2026-08-13) and the Dorel Wall Beds recall (2024-11-21).
 - **Agent:**
-  > In 2025, the everyday products and home structures associated with the highest
-  > estimated injury-related ER visits for adults aged 65 and older are floors or
-  > flooring materials (about 1.77 million estimated visits from 35,318 sample cases),
-  > followed by beds or bedframes (about 592,000 ...), and stairs or steps (about
-  > 423,000 ...). ... Regarding recalls, text-based searches identified possible
-  > matches (not reviewed by a person) for beds or bedframes, such as recalls for
-  > Murphy beds, platform beds, and upholstered beds ... (recall ID 10922, cpsc.gov
-  > link). No reviewed recall links were found in the database for floors or stairs.
-  > Recalls are provided as context and do not prove that a recalled product caused
-  > any specific injury.
+  > In 2025, the top five products sending adults aged 65+ to the emergency room are:
+  > 1. Floors or flooring materials: about 1.77 million estimated injury-related ER
+  >    visits (35,318 sample cases). No reviewed recall link found.
+  > 2. Beds or bedframes, other or not specified: about 592,000 (12,639 sample
+  >    cases). Possible matches (not reviewed) include wall beds and platform beds
+  >    from manufacturers such as GigaCloud Technology USA (Merax Murphy Beds),
+  >    Ningbo Tianqi Electronic, Dorel Home Furnishings and CVB (each with its
+  >    cpsc.gov link).
+  > 3. Stairs or steps ...: about 423,000 (8,865 sample cases). No reviewed recall
+  >    link found.
+  > 4. Chairs, other or not specified: about 258,000 (5,366 sample cases). Possible
+  >    matches (not reviewed) include Branch, Giantex, Tainoki and Academy Sports +
+  >    Outdoors chairs.
+  > 5. Bathtubs or showers ...: about 163,000 (3,422 sample cases). Possible matches
+  >    (not reviewed) include portable camping showers from Golden Resale.
+  >
+  > Recalls are context and not proof that a product caused injuries.
 - **No tools, no system prompt:**
   > I do not have access to real-time data, specific statistics for the year 2025, or
   > live consumer product safety databases ... I recommend checking ... SaferProducts.gov
@@ -201,14 +213,18 @@ same model (`gemini-3.5-flash-lite`) with no tools and no system prompt
 - **Expected:** stairs or steps (code 1842) in 2025 (source: `v_product_estimates`):
   - Adults 65+: **423,006** estimated injury-related ER visits (8,865 cases).
   - Under 5: **81,016** (3,701 cases).
+  - The agent sometimes also counts pull-down or folding stairs (code 1840), each
+    case once (source: `neiss_cases`, any product slot): **423,446** (8,874) and
+    **81,042** (3,702). The test accepts either.
   - These are counts, not rates. The page shows both groups in one table and chart.
 - **Agent:**
-  > In 2025, for stairs or steps (excluding pull-down and folding stairs, product code
-  > 1842), children under 5 accounted for an estimated 81,016 injury-related ER visits
-  > (from 3,701 sample cases). Adults aged 65 and older accounted for an estimated
-  > 423,006 injury-related ER visits (from 8,865 sample cases). ... These are counts of
-  > injury-related ER visits, not rates: the groups differ in size, and population
-  > denominators are not in the data.
+  > For stairs or steps (excluding pull-down and folding stairs) in 2025, children
+  > aged 0-4 accounted for a sample size of 3,701 cases and an estimated 81,016
+  > injury-related ER visits, while adults aged 65+ accounted for a sample size of
+  > 8,865 cases and an estimated 423,006 injury-related ER visits. Neither estimate
+  > is considered low sample. These are counts of injury-related ER visits, not
+  > rates: the groups differ in size, and population denominators are not in the
+  > data.
 - **No tools, no system prompt:**
   > I do not have access to real-time data or specific public health statistics for
   > the year 2025 ... However, looking at historical trends ... (general,
@@ -316,7 +332,8 @@ gets only counts, code adds the sentence.)
   in the data.
 - **Brands and models.** NEISS records product types only. SaferProducts reports name
   brands, but they are voluntary and not representative, so brands are never ranked
-  by danger.
+  by danger. Instead, the agent lists that product's recalls (which do name brands
+  and models, with cpsc.gov links) and the most recent SaferProducts reports.
 - **Causation.** For example, whether a recall reduced injuries, or whether a product
   caused one.
 - **Places and years.** No states, cities or hospitals, and no years outside
@@ -333,11 +350,17 @@ gets only counts, code adds the sentence.)
   shower recall for "Bathtubs or showers".
   - A spot check of 60 crosswalk candidates (20 per confidence level) found that
     16/20 high, 5/20 medium and 1/20 low candidates were the right product type.
-  - The agent's runtime filter (`search_recalls` with a product code) kept 12 of
-    the 60, and 11 of those 12 were right. It also dropped 11 of the 22 right ones,
+  - The agent's runtime filter (`search_recalls` with a product code) kept 11 of
+    the 60, and 10 of those 11 were right. It also dropped 12 of the 22 right ones,
     so a "no reviewed recall link found" answer can miss real recalls. Labels and
     script: [`docs/audit/recall_xwalk_sample.json`](docs/audit/recall_xwalk_sample.json),
     `build/audit_recall_sample.py`.
+  - On 2026-11-10 the filter started requiring a NEISS title's specific modifier
+    ("car" in "Car seats", "bunk" in "Bunk beds"; generic ones like "baby" stay
+    optional). Before, "Car seats" matched baby bath seats, swing seats and golf
+    cars, and "Baby strollers" matched baby bath seats. In the sample above this
+    cost one borderline match (magnetic rod sets for "Building sets"; it was 12 kept,
+    11 right).
 - **The low-sample flag is a project rule.** It is `n_cases < 20`; CPSC's official
   stability rule is not stated in the documents we have.
 - **Keyword searches of the case narratives are approximate.**
@@ -351,9 +374,20 @@ gets only counts, code adds the sentence.)
     scored 13/13, 12/13, 13/13, 11/13, 12/13 and 11/13; the misses were answers
     that skipped the "data cannot answer" sentence, a bicycle trend that gave the
     low and high years instead of 2019, and one 29.24% floors share computed over
-    double-counted product rows (correct: 36.6%). A saved 13/13 run is in
+    double-counted product rows (correct: 36.6%). Earlier runs scored 7/12, 11/12,
+    12/12, 8/13, 9/13, 11/13, 13/13, and 10/13.
+  - On 2026-11-10 we added the guardrail that rejects product codes no tool
+    returned (see "Guardrails" above), after a saved run answered the stroller
+    question with code 1531 (bicycle-mounted baby carriers) instead of 1522. The
+    next live run passed **13/13**; the new guardrail fired once (a code copied from
+    the prompt's example) and the agent recovered with `lookup_codes`.
+  - Also on 2026-11-10, brand questions ("Which brand of stroller is most
+    dangerous?") were changed to answer with the product's recalls and recent
+    SaferProducts reports instead of a yearly injury trend; the recall filter got
+    stricter (see "The recall links are unreviewed" above); and trend answers stopped naming a
+    "high" or "low" year, after two runs called 2022 the trampoline high when 2019
+    was higher. The next live run passed **13/13** and is saved in
     [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json).
-    Earlier runs scored 7/12, 11/12, 12/12, 8/13, 9/13, 11/13, 13/13, and 10/13.
   - The checks themselves are partly lenient regexes.
 - **The grounding check tests that numbers exist, not that they're attributed
   correctly.** It catches invented numbers. It can't catch a real number attached

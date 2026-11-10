@@ -15,7 +15,7 @@ from agents import (
 )
 
 from detective.config import AgentConfig
-from detective.db import Database, guardrail_message, to_json
+from detective.db import Database, filtered_product_codes, guardrail_message, to_json
 from detective.recall_match import (
     belongs_elsewhere,
     keyword_nouns,
@@ -35,6 +35,9 @@ class RunState:
     sql_results: list[dict[str, Any]] = field(default_factory=list)
     recall_results: list[dict[str, Any]] = field(default_factory=list)
     ungrounded: list[str] = field(default_factory=list)
+    # Product codes a tool returned this turn (lookup_codes matches, or a product
+    # code column in a run_sql result). Only these may be used as filters.
+    seen_codes: set[int] = field(default_factory=set)
 
     def record(self, name: str, args: dict[str, Any], result: str, agent: str) -> None:
         self.tool_calls.append(
@@ -44,10 +47,24 @@ class RunState:
             parsed = json.loads(result)
         except (json.JSONDecodeError, TypeError):
             return
+        if name == "lookup_codes" and isinstance(parsed, dict):
+            self.seen_codes.update(
+                m["code"] for m in parsed.get("matches", [])
+                if isinstance(m.get("code"), int)
+            )
         if name == "run_sql" and isinstance(parsed, dict) and parsed.get("rows"):
             self.sql_results.append({"sql": args.get("query", ""), **parsed})
+            cols = [i for i, c in enumerate(parsed.get("columns", []))
+                    if str(c).lower() in CODE_COLUMNS]
+            for row in parsed["rows"]:
+                self.seen_codes.update(
+                    row[i] for i in cols if isinstance(row[i], int)
+                )
         if name == "search_recalls" and isinstance(parsed, dict):
             self.recall_results.extend(parsed.get("recalls", []))
+
+
+CODE_COLUMNS = {"product_code", "product_1", "product_2", "product_3", "neiss_code"}
 
 
 def _args(raw: str | None) -> dict[str, Any]:
@@ -75,7 +92,46 @@ def neiss_rules_guardrail(data: Any) -> ToolGuardrailFunctionOutput:
     return ToolGuardrailFunctionOutput.reject_content(message)
 
 
-def make_run_sql(db: Database, guarded: bool) -> FunctionTool:
+def make_code_guardrail(titles: dict[int, str], exempt: set[int]) -> Any:
+    """Reject run_sql / search_recalls calls that use a product code no tool returned
+    this turn. The model otherwise guesses codes from memory (it once used 1531,
+    bicycle-mounted baby carriers, for strollers, which are 1522)."""
+
+    @tool_input_guardrail
+    def product_code_guardrail(data: Any) -> ToolGuardrailFunctionOutput:
+        state = data.context.context
+        if not isinstance(state, RunState):
+            return ToolGuardrailFunctionOutput.allow()
+        args = _args(data.context.tool_arguments)
+        if data.context.tool_name == "search_recalls":
+            code = args.get("product_code")
+            used = {int(code)} if str(code).strip().isdigit() else set()
+        else:
+            used = filtered_product_codes(str(args.get("query", "")))
+        unseen = sorted(used - state.seen_codes - exempt)
+        if not unseen:
+            return ToolGuardrailFunctionOutput.allow()
+        named = "; ".join(
+            f"{c} is '{titles[c]}'" if c in titles else f"{c} is not a NEISS code"
+            for c in unseen
+        )
+        message = (
+            f"Rejected: product code(s) {', '.join(map(str, unseen))} were not "
+            f"returned by any tool in this turn ({named}). Never guess a code: call "
+            "lookup_codes(kind='product', query='<one short word>') and use the code "
+            "whose title matches the product asked about."
+        )
+        state.record(
+            data.context.tool_name, args, json.dumps({"rejected": message}),
+            data.agent.name,
+        )
+        return ToolGuardrailFunctionOutput.reject_content(message)
+
+    return product_code_guardrail
+
+
+def make_run_sql(db: Database, guarded: bool, extra_guards: list[Any] | None = None
+                 ) -> FunctionTool:
     def run_sql(query: str) -> str:
         """Run one read-only DuckDB SELECT and return columns and rows (max 200 rows).
 
@@ -86,7 +142,7 @@ def make_run_sql(db: Database, guarded: bool) -> FunctionTool:
         """
         return to_json(db.query(query))
 
-    guards = [neiss_rules_guardrail] if guarded else []
+    guards = [neiss_rules_guardrail, *(extra_guards or [])] if guarded else []
     return function_tool(run_sql, tool_input_guardrails=guards)
 
 
@@ -179,6 +235,7 @@ def make_detective_tools(
         return to_json({"kind": k, "codes": lookup})
 
     titles = {p["code"]: p["title"] for p in ctx["products"]}
+    code_guard = make_code_guardrail(titles, set(cfg.placeholder_codes))
     specific = specific_phrases(titles)
 
     def _candidates(likes: list[str], year_sql: str, year_par: list[Any]) -> list[
@@ -205,7 +262,7 @@ def make_detective_tools(
             out.setdefault(r["recall_id"], []).append(r["name"])
         return out
 
-    @function_tool
+    @function_tool(tool_input_guardrails=[code_guard])
     def search_recalls(
         keywords: str, product_code: int | None = None, since_year: int | None = None
     ) -> str:
@@ -285,4 +342,9 @@ def make_detective_tools(
             out["message"] = f"no reviewed recall link found for {target}"
         return to_json(out)
 
-    return [describe_data, lookup_codes, make_run_sql(db, guarded=True), search_recalls]
+    return [
+        describe_data,
+        lookup_codes,
+        make_run_sql(db, guarded=True, extra_guards=[code_guard]),
+        search_recalls,
+    ]

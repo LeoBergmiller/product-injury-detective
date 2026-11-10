@@ -330,7 +330,7 @@
   "recall_id": 10618,
   "recall_title": "Huaker Magnetic Balls and Rods Sets Recalled Due to Risk of Serious Injury or Death from Choking; Violates the Small Ball Ban",
   "correct": true,
-  "kept_by_agent_filter": true
+  "kept_by_agent_filter": false
  },
  {
   "confidence": "low",
