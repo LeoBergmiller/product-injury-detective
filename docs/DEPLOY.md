@@ -8,7 +8,7 @@ Google Cloud **buildpacks** (no Dockerfile), and the data shipped in the repo.
 | Setting | Value | Why |
 |---|---|---|
 | Source | GitHub `LeoBergmiller/product-injury-detective`, branch `main`, continuous deploy (Developer Connect) | Handout requirement |
-| Build type | Google Cloud buildpacks (Python), **no Dockerfile** | Project 1 deployed this way from `pyproject.toml` + `uv.lock` alone, with no `requirements.txt` |
+| Build type | Google Cloud buildpacks (Python), **no Dockerfile** | Project 1 deployed this way from `pyproject.toml` + `uv.lock` alone, with no `requirements.txt`. Python 3.13 comes from `.python-version` |
 | Entrypoint | `uvicorn app:app --host 0.0.0.0 --port $PORT` | Set in the build configuration's "Entrypoint" field, as in Project 1 |
 | **Maximum instances** | **1** | Chat sessions live in memory; a second instance would not know the first one's sessions |
 | Minimum instances | 0 (or 1 to avoid cold starts during grading) | Startup only opens DuckDB and reads two small JSON/MD files |
@@ -28,10 +28,12 @@ Google Cloud **buildpacks** (no Dockerfile), and the data shipped in the repo.
 
 ## Access control
 
-Project 1 used **IAP with principal `columbia.edu`**. Before reusing that, confirm
-that every grader account (the handout lists codeboi07, bhuvighosh3, nniishhh, x)
-can sign in through it. If not, allow unauthenticated access instead. This is a team
-decision.
+Project 1 used **IAP with principal `columbia.edu`**. We don't know which Google
+accounts the graders and peer reviewers will use (the handles in the handout,
+codeboi07, bhuvighosh3, nniishhh and x, are GitHub accounts to add as repo
+collaborators, not sign-in accounts), so IAP may lock them out. Allowing
+unauthenticated access is the safe choice. This is a team decision; see "Not verified
+yet" for the access problem seen on 2026-11-09.
 
 ## Data
 
@@ -63,14 +65,35 @@ Results:
   `response`, `session_id`, `tool_calls` (each with `agent`), `table`, `chart`,
   `caveats`, and `mode`.
 
+## Verified again from a fresh clone (2026-11-09)
+
+A `git clone` of `main`, installed with `uv sync --locked --no-dev`:
+- `/health`, `/`, `/chat` (1,469,070 for under 5, with the full response shape and
+  `agent` on every tool call), a follow-up in the same session, `/clear`, and a 422
+  for an empty message.
+- Queries also work when the process starts outside the repo root, and file access
+  outside `data/processed` stays blocked.
+- `build/build_db.py` rebuilt the DB with all sanity checks passing, and
+  `build/build_agent_context.py` reproduced the committed context byte for byte.
+- The page has no console errors and no sideways scrolling at phone width (375 px).
+
 ## Not verified yet
 
 - The buildpack build itself (with uv) on this repo.
 - The memory headroom on Cloud Run.
-- The IAP access for the graders.
+- **Access for graders.** On 2026-11-09 the URL in `submission.json`
+  (`https://product-injury-detective-ux3bbl6loa-ue.a.run.app`) returned **403
+  Forbidden** to every unauthenticated request, including `/health`: the service
+  required Cloud Run invoker authentication. It is also not yet confirmed that this
+  URL is our service. To open it, in the service's **Security** tab choose "Allow
+  unauthenticated invocations", or run
+  `gcloud run services add-iam-policy-binding product-injury-detective --region <region> --member=allUsers --role=roles/run.invoker`.
 
 ## After deploying
 
 1. Open `<deploy_url>/health`. It should return `{"status":"ok","mode":"detective"}`.
 2. Ask the first sample question in the page and check the answer (1,469,070).
-3. Put the URL into `submission.json` (`deploy_url`).
+3. Check that `deploy_url` in `submission.json` (and the README's "Deployed" line) is
+   this service's URL.
+4. Open it from a browser that is not signed in to the project, to confirm graders
+   can reach it.

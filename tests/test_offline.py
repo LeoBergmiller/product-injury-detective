@@ -1,6 +1,7 @@
-"""Offline checks (no model calls): SQL safety, guardrails, tools, presentation.
+"""Offline checks (no model calls): SQL safety, guardrails, tools, grounding, answer
+clean-up, presentation, and the app's endpoints and session cap (in a subprocess).
 
-Usage: uv run python tests/test_offline.py
+Usage: uv run python tests/test_offline.py   (or: uv run pytest -q tests/test_offline.py)
 """
 
 from __future__ import annotations

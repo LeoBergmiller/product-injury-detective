@@ -8,7 +8,8 @@ of them been recalled?"
 
 One agent, no sub-agents. It's built on the course starter's framework: the OpenAI
 Agents SDK with `LitellmModel("vertex_ai/gemini-3.5-flash-lite")`, authenticated by
-gcloud application-default credentials (no API key). `max_turns = 8`.
+gcloud application-default credentials (no API key). `max_turns = 8`, and the whole
+turn (grounding fixes included) is capped at `request_timeout_s = 240` s.
 
 ```
 browser ── POST /chat {message, session_id?} ──> app.py (FastAPI)
@@ -19,7 +20,7 @@ browser ── POST /chat {message, session_id?} ──> app.py (FastAPI)
                                                    │ read-only DuckDB
                                                    ▼
                                  data/processed/injuries.duckdb (views over Parquet)
-<── {response, session_id, tool_calls[{name,args,result,agent}], table?, chart?, caveats?}
+<── {response, session_id, tool_calls[{name,args,result,agent}], table?, chart?, caveats, mode}
 ```
 
 Endpoints: `POST /chat`, `POST /clear?session_id=`, `GET /health`, and `GET /`, which
@@ -46,6 +47,9 @@ The rules baked into the prompt:
 - Flag low-sample estimates (`n_cases < 20`).
 - Call recall links "possible matches" unless `audited`.
 - SaferProducts reports are voluntary and not representative.
+- Start with the direct answer, or with "the data cannot answer ..." and why.
+- For a trend, give the first and last year's estimates.
+- State the main number first; the page's table is the query that holds it.
 
 ## Tools
 
@@ -63,9 +67,9 @@ The rules baked into the prompt:
 - Statements are parsed with `extract_statements`, and anything other than a single
   SELECT is rejected.
 
-**Guardrails** (`tool_input_guardrail`, like the starter's NA guardrail). Each one returns
-an explanation the model can act on.
-The checks are in `detective/db.py` (`guardrail_message`), in this order:
+**Guardrails** (`tool_input_guardrail`, like the starter's NA guardrail). Each returns
+an explanation the model can act on. The checks are in `detective/db.py`
+(`guardrail_message`), in this order:
 1. **No table read.** A query that reads no table or view (numbers typed into the SQL)
    is rejected: numbers must come from the data.
 2. **Unweighted counts.** A query that reads `neiss_cases`, `neiss_case_products` or
@@ -73,30 +77,32 @@ The checks are in `detective/db.py` (`guardrail_message`), in this order:
 3. **Raw age filters.** A filter such as `age_raw < N` is rejected and redirected to
    `age_years`.
 4. **Summing the long product table.** `SUM` over `v_case_products` /
-   `neiss_case_products` without a `product_code = N` filter in the WHERE clause or a
-   `GROUP BY product_code` (by name, position such as `GROUP BY 1`, or `ALL`) is
-   rejected (a `CASE WHEN product_code = N` in the SELECT
-   list doesn't count: the other sums still add every product row), because a case with several products would be counted once per product.
+   `neiss_case_products` is rejected unless the WHERE clause filters one
+   `product_code = N`, or the query groups by `product_code` (by name, by position
+   such as `GROUP BY 1`, or `GROUP BY ALL`). A case with several products has one row
+   per product, so a total over all rows counts it several times. A
+   `CASE WHEN product_code = N` in the SELECT list doesn't count as a filter, because
+   the query's other sums still add every row.
 5. **Summing estimate rows across products.** `SUM` over `v_product_estimates` /
-   `v_top_products` with `product_code IN (a, b, ...)` and no `GROUP BY product_code`
-   is rejected: a case listing two of the codes is counted twice, and the summed
-   `n_cases` / `low_sample` are wrong. It is redirected to `neiss_cases` any-slot
-   counting.
+   `v_top_products` with `product_code IN (a, b, ...)` and no grouping by
+   `product_code` is rejected: a case listing two of the codes is counted twice, and
+   the summed `n_cases` / `low_sample` are wrong. It is redirected to `neiss_cases`
+   any-slot counting.
 6. **Slot-1 grouping.** A query that groups by `product_1` alone is rejected and
    redirected to any-slot counting.
 
-**Grounding check** (`detective/grounding.py`, run after the answer). Every count
-(with commas, or a bare whole number of 3+ digits other than a year), "N million" and
-percentage in the answer must match a number in that turn's tool results (exactly,
-or within 0.5% when visibly rounded; "3 million" in a tool's text, such as a recall
-title, counts). If any doesn't, the agent first gets up to 4
-more steps to run the queries that return them (it sometimes answers from memory
-without running SQL), then, if numbers are still unmatched, rewrites the answer with
-tool calls forbidden (`tool_choice="none"`). A fix is kept only if it leaves fewer
-unmatched numbers. Fixes share the turn's `request_timeout_s` budget (240 s), so a
-turn never runs past it.
-Numbers still unmatched are listed in `caveats`, and the check is logged in
-`tool_calls` as `grounding_check`.
+**Grounding check** (`detective/grounding.py`, run after the answer).
+- Every count in the answer (with commas, or a bare whole number of 3+ digits other
+  than a year), every "N million" and every percentage must match a number in that
+  turn's tool results: exactly, or within 0.5% when visibly rounded. "3 million" in a
+  tool's text, such as a recall title, counts.
+- If any doesn't, the agent first gets up to 4 more steps to run the queries that
+  return them (it sometimes answers from memory without running SQL). If numbers are
+  still unmatched, it rewrites the answer with tool calls forbidden
+  (`tool_choice="none"`). A fix is kept only if it leaves fewer unmatched numbers.
+- Fixes share the turn's 240 s budget, so a turn never runs past it.
+- Numbers still unmatched are listed in `caveats`, and the check is logged in
+  `tool_calls` as `grounding_check`.
 
 ## Answers it must refuse or qualify
 
@@ -110,37 +116,45 @@ The prompt and the context state that the data cannot answer:
 - **Anything else:** years outside 2019-2025, states or cities, rates per person, and
   trends for codes that haven't been checked against the comparability tables.
 
+The model doesn't always follow this, so code also checks it (see Output).
+
 ## Output
 
-`response` holds the prose. After the run, code rewrites plain "ER visits" as
-"injury-related ER visits", removes LaTeX-style `$n = 487$` markup, and moves a
-buried "the data cannot answer ..." paragraph to the top. If the question asks which
-brand is most dangerous, for a state, city or hospital, for risk per hour or per use ("more dangerous", "safer", "per hour") or for a rate
-("more likely", "per person"), asks whether a recall or rule caused a change, or
-names a year outside the loaded NEISS years, and
-the answer never says the data can't answer it, code puts a fixed "The data cannot
-answer ..." sentence first. The `table` (columns and rows) is the `run_sql` result
-behind the answer: the latest result that holds the answer's first count (of the
-first three it checks), otherwise the last result. The agent sometimes runs an extra
-query after the one it answers from, so the last result alone can be the wrong
-table. One row per age group in text order (`15-24` before `5-14`) is put in age
-order. The `chart` is a spec derived from that table deterministically
-(`detective/present.py`). The y column is an estimate-like column (`est_visits`
-first, then names containing `est`, `weighted` or `visits`), otherwise the last
-numeric column:
-- with a `year` column, a line chart: one line per label (up to 6), or one line per
-  measure column for a wide table such as `year, bicycles, e_bicycles`;
-- otherwise, with 25 rows or fewer, a bar chart over the label column, grouped by
+**`response`** holds the prose. After the run, code (`detective/grounding.py`):
+- rewrites plain "ER visits" as "injury-related ER visits", drops a doubled
+  "estimated", and removes LaTeX-style `$n = 487$` markup;
+- moves a buried "the data cannot answer ..." paragraph to the top;
+- puts a fixed "The data cannot answer ..." sentence first when the question asks
+  which brand is most dangerous, about a state, city or hospital, about risk per hour
+  or per use, for a rate ("more likely", "per person"), whether a recall or rule
+  caused a change, or about a year outside the loaded NEISS years, and the answer
+  doesn't already say it can't answer that. The match is by question wording.
+
+**`table`** (columns and rows) is the `run_sql` result behind the answer: the latest
+result that holds the answer's first count (of the first three it checks), otherwise
+the last result. The agent sometimes runs an extra query after the one it answers
+from, so the last result alone can be the wrong table. One row per age group in text
+order (`15-24` before `5-14`) is put in age order.
+
+**`chart`** is a spec derived from that table deterministically
+(`detective/present.py`). The y column is an estimate-like column (`est_visits` first,
+then names containing `est`, `weighted` or `visits`), otherwise the last numeric
+column.
+- With a `year` column: a line chart, with one line per label (up to 6), or one line
+  per measure column for a wide table such as `year, bicycles, e_bicycles`.
+- Otherwise, with 25 rows or fewer: a bar chart over the label column, grouped by
   column for a wide comparison (`est_visits_0_4, est_visits_65plus`) or by a second
   text column with 2-4 values (e.g. `age_group`).
 - The `age_group = 'all'` total is left out of the chart when its age groups are
-  shown (the table keeps it).
+  shown; the table keeps it.
 
-`caveats` is filled in code from the tool results and SQL: low-sample rows, counts not
-rates (two or more age groups or years), unchecked code comparability (two or more
-years), unaudited recall matches, SaferProducts not being representative, approximate
-narrative keyword matches, and any numbers the grounding check could not match. A
-caveat the answer already states is not repeated.
+**`caveats`** are filled in code from the tool results and SQL: low-sample rows,
+counts not rates (two or more age groups or years), unchecked code comparability (two
+or more years), unaudited recall matches, SaferProducts not being representative,
+approximate narrative keyword matches, and any numbers the grounding check could not
+match. A caveat the answer already states is not repeated.
+
+**`mode`** is `detective`, or `plain` for the README baseline.
 
 ## Plain mode (README comparison)
 

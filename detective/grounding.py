@@ -1,9 +1,18 @@
-"""Check that every number in an answer appears in this turn's tool results.
+"""Check an answer's numbers against the tool results, and tidy the answer text.
 
-Counts like 1,469,070, and bare whole numbers of 3+ digits like 257 (years 1900-2100
-excepted), must match a tool value exactly (+-1) unless visibly rounded (ending in
-,000, or "1.47 million"), which may differ by 0.5%. Percentages may differ by 0.05
-points (or be the fraction form of a tool value).
+Numbers (ungrounded_numbers): counts like 1,469,070, and bare whole numbers of 3+
+digits like 257 (years 1900-2100 excepted), must match a tool value exactly (+-1)
+unless visibly rounded (ending in ,000, or "1.47 million"), which may differ by 0.5%.
+"N million" in a tool's text counts. Percentages may differ by 0.05 points (or be the
+fraction form of a tool value).
+
+Text, applied in this order after the run (detective mode only):
+- normalize_visits: "injury-related ER visits" wording, no doubled "estimated", no
+  LaTeX-style "$n = 487$";
+- refusal_first: a buried "the data cannot answer ..." paragraph moves to the top;
+- ensure_cannot: questions the data can't answer (brand danger, places, per-use risk,
+  rates, recall effects, years outside the data) get that sentence first if the
+  answer doesn't already say so.
 """
 
 from __future__ import annotations

@@ -22,12 +22,12 @@ and have any of them been recalled?"**
 browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex Gemini)
             tools: describe_data | lookup_codes | run_sql (+ guardrails) | search_recalls
             -> read-only DuckDB (data/processed/injuries.duckdb: views over Parquet)
-<- {response, session_id, tool_calls[{name, args, result, agent}], table, chart, caveats}
+<- {response, session_id, tool_calls[{name, args, result, agent}], table, chart, caveats, mode}
 ```
 
 - **One agent, no sub-agents.** It uses `vertex_ai/gemini-3.5-flash-lite` (the
   course starter's model) through gcloud application-default credentials. There is no
-  API key. Each turn is capped at 8 steps.
+  API key. Each turn is capped at 8 steps and 240 s.
 - **Offline build** (`build/`): it unions the yearly NEISS files and applies the
   sample weights. It also builds:
   - a product-code table from the coding manual;
@@ -62,7 +62,8 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
   "Floor Lamps" for flooring and "LED Modules used with Floating Stairs" for stairs.
   Otherwise it says "no reviewed recall link found".
 - **The page** shows the answer, caveats, a table, and a chart (one chart with both
-  groups side by side for comparisons). "How I found this" lists every tool call,
+  groups side by side for comparisons). The table is the query result behind the
+  answer's first number. "How I found this" lists every tool call,
   including guardrail rejections. The design is in
   [`docs/AGENT_DESIGN.md`](docs/AGENT_DESIGN.md).
 
@@ -121,7 +122,7 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
 gcloud auth application-default login     # Vertex AI (Gemini), as in the course setup
 uv sync
 uv run app.py                             # http://localhost:8000
-uv run python tests/test_offline.py       # no model calls
+uv run python tests/test_offline.py       # no model calls (or: uv run pytest -q tests/test_offline.py)
 uv run python tests/test_questions.py     # 13 live questions (uses Vertex AI)
 ```
 
@@ -328,8 +329,10 @@ gets only counts, code adds the sentence.)
 - **The model's answers vary between runs** (see the observed rates above).
   - After the last fixes (2026-11-09: refusals for brand, place, rate, per-use risk,
     recall-effect and out-of-range-year questions checked in code; the guardrail
-    for shares computed over the long product table), two live runs both passed
-    **13/13** checks (`tests/test_questions.py`). Runs before those fixes that day
+    for shares computed over the long product table), three live runs passed
+    **13/13**, **13/13** and **12/13** checks (`tests/test_questions.py`). The 12/13
+    miss: the bicycle trend added e-bike code 5045, which only exists from 2024, so
+    its 2025 figure jumps (the answer flagged this, but the prompt forbids it). Runs before those fixes that day
     scored 13/13, 12/13, 13/13, 11/13, 12/13 and 11/13; the misses were answers
     that skipped the "data cannot answer" sentence, a bicycle trend that gave the
     low and high years instead of 2019, and one 29.24% floors share computed over
