@@ -1,12 +1,22 @@
 # Safety Detective
 
-A Text2SQL agent over U.S. Consumer Product Safety Commission (CPSC) data. It answers:
-**"For a given age group, which everyday products send people to the emergency room,
-and have any of them been recalled?"**
+Safety Detective is a Text2SQL agent that answers questions about which everyday
+products send people to the emergency room. It works over three U.S. Consumer Product
+Safety Commission (CPSC) sources: NEISS emergency-room injury data (2019-2025), CPSC
+product recalls, and SaferProducts.gov consumer reports. Its core question is:
+**"For a given age group, which everyday products cause the most injury-related ER
+visits nationally, how has that changed over time, and have any of those products
+been recalled?"**
 
-- **Who it's for:** parents, caregivers, and people looking after older adults. For
-  example, compare children under 5 with adults 65+, find the products behind the
-  visits, and see possible recalls.
+- **Who it's for:** parents, caregivers, and anyone looking after an older adult who
+  wants to know what to watch out for at home.
+- **What you can ask:** for example, "What sends toddlers under 5 to the ER most
+  often?", "How do stair injuries compare for under-5s and adults 65+?", "Have bicycle
+  injuries gone up since 2019?", or "Has anything in the top 5 for adults 65+ been
+  recalled?"
+- **What you get:** weighted national estimates, not raw row counts, along with a
+  table, a chart, every SQL query it ran, and possible recall matches with links to
+  cpsc.gov.
 - **What it is not:** a risk calculator. It counts estimated injury-related ER visits;
   it does not know how often products are used, so it can't say what is "most
   dangerous" (see [What the data can't answer](#what-the-data-cant-answer)).
