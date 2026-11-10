@@ -32,6 +32,8 @@
   /* main also has class "wrap", whose padding would win over a plain `main` rule and
      drop the bottom space; without it the last answer ends under the fixed input bar. */
   main.wrap { padding: 18px 20px 140px; }
+  /* Scrolling into view stops above the fixed input bar, not under it. */
+  html { scroll-padding-bottom: 96px; }
   .msg { margin: 0 0 16px; }
   .user { text-align: right; }
   .user .bubble { display: inline-block; background: var(--ink); color: #fff;
@@ -45,7 +47,8 @@
   .chart { margin: 14px 0 4px; overflow-x: auto; }
   .chart svg { display: block; max-width: 100%; }
   .chart text { font-size: 11px; fill: var(--muted); }
-  .tablewrap { margin-top: 12px; max-height: 480px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  /* Never taller than ~55% of the window, so a whole table fits on screen. */
+  .tablewrap { margin-top: 12px; max-height: min(480px, 55vh); overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
   /* Long titles wrap so the number columns stay in view; numbers never wrap. */
   th, td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
@@ -182,13 +185,23 @@
       note.textContent = `${t.rows.length} rows (scroll the table to see all).`;
   }
 
+  // Bring a finished answer into view: all of it above the input bar if it fits,
+  // otherwise from its top (the user scrolls down from there).
+  function showAnswer(a) {
+    const bar = document.getElementById("form").offsetHeight;
+    const fits = a.getBoundingClientRect().height <= window.innerHeight - bar - 24;
+    // Instant, not smooth: answers can take a while, and a smooth scroll doesn't run
+    // if the user switched to another tab meanwhile.
+    a.scrollIntoView({ block: fits ? "end" : "start", behavior: "auto" });
+  }
+
   const COLORS = ["#2f6f8f", "#b4442a", "#5f8f3e", "#7a4f9a"];
 
   function renderBar(c) {
     // One row per x label; with a series, one bar per series inside the row.
     const xs = [...new Set(c.data.map((d) => d.x))];
     const series = [...new Set(c.data.map((d) => d.series ?? ""))];
-    const barH = series.length > 1 ? 14 : 16, gap = 8, labelW = 210, w = 760;
+    const barH = series.length > 1 ? 13 : 14, gap = 5, labelW = 210, w = 760;
     const plotW = w - labelW - 70, rowH = series.length * barH + gap;
     const max = Math.max(...c.data.map((d) => d.y)) || 1;
     const legendH = series.length > 1 ? 20 : 0;
@@ -286,6 +299,7 @@
       const cav = data.caveats?.length ? `<div class="caveats"><ul>${data.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : "";
       a.innerHTML = `<div class="text">${linkify(data.response)}</div>${cav}${chart}${renderTable(data.table)}${renderCalls(data.tool_calls)}`;
       noteScroll(a, data.table);
+      showAnswer(a);
     } catch (e) {
       a.innerHTML = `<span class="thinking">Request failed: ${esc(e.message)}</span>`;
     } finally {
