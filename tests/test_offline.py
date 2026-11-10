@@ -89,6 +89,24 @@ def test_grounding() -> None:
     ok = "1,469,070 visits, about 1.47 million, 36.6%"
     assert ungrounded_numbers(ok, calls) == []
     assert ungrounded_numbers("3,904 cases", calls) == ["3,904"]
+    # Bare 3+ digit numbers are checked too; years and ranges are not.
+    assert ungrounded_numbers("257 sample cases in 2019-2025", calls) == ["257"]
+    assert normalize_visits(
+        "an estimated 1,469,070 estimated ER visits") == (
+        "an estimated 1,469,070 injury-related ER visits")
+    assert normalize_visits("2019: 11,873 visits ($n = 487$); costs $5") == (
+        "2019: 11,873 visits (n = 487); costs $5")
+
+
+def test_summed_estimates_rejected() -> None:
+    q = ("SELECT age_group, SUM(n_cases), SUM(est_visits) FROM v_product_estimates "
+         "WHERE year = 2025 AND product_code IN (1840, 1842) GROUP BY age_group")
+    assert "one row per product" in (guardrail_message(q) or "")
+    one = ("SELECT age_group, n_cases, est_visits FROM v_product_estimates "
+           "WHERE year = 2025 AND product_code IN (1842) ")
+    assert guardrail_message(one) is None
+    per = q.replace("GROUP BY age_group", "GROUP BY age_group, product_code")
+    assert guardrail_message(per) is None
 
 
 def test_guardrail_allows() -> None:

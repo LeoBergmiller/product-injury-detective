@@ -74,13 +74,22 @@ The checks are in `detective/db.py` (`guardrail_message`), in this order:
 4. **Summing the long product table.** `SUM` over `v_case_products` /
    `neiss_case_products` without one `product_code` or a `GROUP BY product_code` is
    rejected, because a case with several products would be counted once per product.
-5. **Slot-1 grouping.** A query that groups by `product_1` alone is rejected and
+5. **Summing estimate rows across products.** `SUM` over `v_product_estimates` /
+   `v_top_products` with `product_code IN (a, b, ...)` and no `GROUP BY product_code`
+   is rejected: a case listing two of the codes is counted twice, and the summed
+   `n_cases` / `low_sample` are wrong. It is redirected to `neiss_cases` any-slot
+   counting.
+6. **Slot-1 grouping.** A query that groups by `product_1` alone is rejected and
    redirected to any-slot counting.
 
-**Grounding check** (`detective/grounding.py`, run after the answer). Every count,
-"N million" and percentage in the answer must match a number in that turn's tool
-results (exactly, or within 0.5% when visibly rounded). If any doesn't, the model is
-asked once to rewrite the answer with tool calls forbidden (`tool_choice="none"`).
+**Grounding check** (`detective/grounding.py`, run after the answer). Every count
+(with commas, or a bare whole number of 3+ digits other than a year), "N million" and
+percentage in the answer must match a number in that turn's tool results (exactly,
+or within 0.5% when visibly rounded). If any doesn't, the agent first gets up to 4
+more steps to run the queries that return them (it sometimes answers from memory
+without running SQL), then, if numbers are still unmatched, rewrites the answer with
+tool calls forbidden (`tool_choice="none"`). A fix is kept only if it leaves fewer
+unmatched numbers.
 Numbers still unmatched are listed in `caveats`, and the check is logged in
 `tool_calls` as `grounding_check`.
 

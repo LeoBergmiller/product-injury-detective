@@ -48,12 +48,14 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
   - unweighted `COUNT(*)` over NEISS rows;
   - range filters on raw `age_raw`;
   - grouping by `product_1` alone;
-  - `SUM(weight)` across products in the long product table (double counting).
+  - `SUM(weight)` across products in the long product table (double counting);
+  - summing several products' rows of `v_product_estimates` / `v_top_products`.
 - **Grounding check.**
-  - After each answer, every count, million and percentage must match a value in
-    that turn's tool results.
-  - If one doesn't, the model is asked once to rewrite the answer, with tool calls
-    forbidden.
+  - After each answer, every count (including bare numbers like 257), million and
+    percentage must match a value in that turn's tool results.
+  - If one doesn't, the agent is asked to run the queries that return them (it
+    sometimes answers from memory), and if numbers are still unmatched, to rewrite
+    the answer with tool calls forbidden.
   - Anything still unmatched is listed in `caveats`.
 - **Recalls are "possible match (not reviewed)".** `search_recalls` keeps a recall only
   if the recalled product's head noun is the NEISS product. For example, it drops
@@ -321,9 +323,10 @@ The agent says so in its first sentence, then offers what the data can show:
   stability rule is not stated in the documents we have.
 - **Keyword searches of the case narratives are approximate.**
 - **The model's answers vary between runs** (see the observed rates above).
-  - The last live run (2026-11-09) passed **12/13** checks (`tests/test_questions.py`).
-    The miss: asked whether a bike or a skateboard is more dangerous per hour, it gave
-    visit counts without saying the data has no exposure measure. A 13/13 run is in
+  - The last live run (2026-11-09) passed **13/13** checks (`tests/test_questions.py`).
+    The two runs before it scored 12/13; both missed the per-hour risk question,
+    giving visit counts without saying the data has no exposure measure. A saved
+    13/13 run is in
     [`docs/traces/questions_detective.json`](docs/traces/questions_detective.json).
     Earlier runs scored 7/12, 11/12, 12/12, 8/13, 9/13, 11/13, 13/13, and 10/13.
   - The checks themselves are partly lenient regexes.

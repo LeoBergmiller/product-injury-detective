@@ -38,6 +38,8 @@ GROUP_BY_PRODUCT = re.compile(
     r"group\s+by\b[^;]*?\bproduct_code\b", re.IGNORECASE | re.DOTALL
 )
 OTHER_SLOTS = re.compile(r"\bproduct_[23]\b|\bproduct_code\b", re.IGNORECASE)
+ESTIMATE_VIEWS = re.compile(r"\b(v_product_estimates|v_top_products)\b", re.IGNORECASE)
+SEVERAL_PRODUCTS = re.compile(r"\bproduct_code\s+in\s*\(\s*\d+\s*,", re.IGNORECASE)
 
 
 def _strip_sql_comments_and_strings(query: str) -> str:
@@ -87,6 +89,19 @@ def guardrail_message(query: str) -> str | None:
             "set of codes use neiss_cases WHERE product_1 IN (...) OR product_2 IN "
             "(...) OR product_3 IN (...); for one product filter product_code = N or "
             "GROUP BY product_code."
+        )
+    if (
+        ESTIMATE_VIEWS.search(code)
+        and SUM_CALL.search(code)
+        and SEVERAL_PRODUCTS.search(code)
+        and not GROUP_BY_PRODUCT.search(code)
+    ):
+        return (
+            "Rejected: v_product_estimates / v_top_products have one row per product, "
+            "so summing several products counts a case that lists two of them twice, "
+            "and n_cases / low_sample stop meaning anything. To combine codes, query "
+            "neiss_cases WHERE product_1 IN (...) OR product_2 IN (...) OR product_3 "
+            "IN (...), with COUNT(*) AS n_cases and SUM(weight) AS est_visits."
         )
     if GROUP_BY_P1.search(code) and not OTHER_SLOTS.search(code):
         return (

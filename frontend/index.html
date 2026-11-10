@@ -43,11 +43,15 @@
   .chart { margin: 14px 0 4px; overflow-x: auto; }
   .chart svg { display: block; max-width: 100%; }
   .chart text { font-size: 11px; fill: var(--muted); }
-  .tablewrap { margin-top: 12px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .tablewrap { margin-top: 12px; max-height: 480px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  th, td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  /* Long titles wrap so the number columns stay in view; numbers never wrap. */
+  th, td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  td { overflow-wrap: anywhere; min-width: 3em; }
+  th, td.num, td.id { white-space: nowrap; }
   th { position: sticky; top: 0; background: #eef1f5; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tablenote { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
   details { margin-top: 12px; font-size: 13px; }
   summary { cursor: pointer; color: var(--muted); }
   .call { border-left: 3px solid var(--line); margin: 8px 0; padding: 4px 10px; }
@@ -126,7 +130,9 @@
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const linkify = (s) => esc(s)
     .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
-    .replace(/(https?:\/\/[^\s)<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+    // Markdown links [text](url) first, then bare URLs not already inside an href.
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/(?<!href=")(https?:\/\/[^\s)<\]]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
   const fmt = (v) => typeof v === "number"
     ? (Number.isInteger(v) || Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: 2 }))
     : esc(v === null ? "" : v);
@@ -148,13 +154,18 @@
 
   function renderTable(t) {
     if (!t || !t.rows?.length) return "";
-    const head = t.columns.map((c) => `<th>${esc(c)}</th>`).join("");
     const ids = t.columns.map(isIdCol);
+    const numCol = t.columns.map((_, i) => !ids[i]
+      && t.rows.every((r) => r[i] === null || typeof r[i] === "number"));
+    const head = t.columns.map((c, i) => `<th class="${numCol[i] ? "num" : ""}">${esc(c)}</th>`).join("");
     const body = t.rows.map((r) => "<tr>" + r.map((v, i) => ids[i]
-      ? `<td>${esc(v === null ? "" : v)}</td>`
+      ? `<td class="id">${esc(v === null ? "" : v)}</td>`
       : `<td class="${typeof v === "number" ? "num" : ""}">${fmt(v)}</td>`).join("") + "</tr>").join("");
+    const n = t.rows.length;
+    const note = t.truncated ? `Showing the first ${n} rows.`
+      : n > 12 ? `${n} rows (scroll the table to see all).` : "";
     return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
-      + (t.truncated ? `<small>Showing the first ${t.rows.length} rows.</small>` : "");
+      + (note ? `<small class="tablenote">${note}</small>` : "");
   }
 
   const COLORS = ["#2f6f8f", "#b4442a", "#5f8f3e", "#7a4f9a"];

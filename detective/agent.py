@@ -50,6 +50,14 @@ WRAP_UP = (
 
 
 FRAGMENT_CHARS = 160
+GROUNDING_QUERY = (
+    "Your answer contains numbers that do not appear in any tool result from this "
+    "turn: {numbers}. Run the run_sql queries that return them, then write the whole "
+    "answer again using only numbers from tool results. If the data can't give a "
+    "number, leave it out."
+)
+GROUNDING_QUERY_TURNS = 4
+GROUNDING_QUERY_TIMEOUT_S = 60
 GROUNDING_FIX = (
     "Your answer contains numbers that do not appear in any tool result: {numbers}. "
     "Rewrite the whole answer using only numbers that appear in the tool results "
@@ -208,28 +216,46 @@ class Detective:
         return "\n\n".join(texts) if len(texts) > 1 else final
 
     async def _ground(self, result: Any, response: str, state: RunState) -> str:
-        """Rewrite once (tool calls forbidden) if the answer has numbers no tool
-        returned."""
+        """If the answer has numbers no tool returned, fix it once.
+
+        First the agent may query again (it sometimes answers from memory without
+        running SQL); if numbers are still unmatched, it rewrites with tool calls
+        forbidden. The better of the two is kept only if it has fewer unmatched
+        numbers than the original.
+        """
         bad = ungrounded_numbers(response, state.tool_calls)
         if not bad:
             return response
-        closer = no_tool_closer(self.agent)
-        history = result.to_input_list() + [
-            {"role": "user", "content": GROUNDING_FIX.format(numbers=", ".join(bad))}
+        best, best_bad, how = response, bad, "rewrite not used"
+        history = result.to_input_list()
+        attempts = [
+            ("re-queried", self.agent, GROUNDING_QUERY, GROUNDING_QUERY_TURNS),
+            ("answer rewritten", no_tool_closer(self.agent), GROUNDING_FIX, 1),
         ]
-        try:
-            fixed = await Runner.run(closer, history, context=state, max_turns=1)
-            new = str(fixed.final_output or "").strip()
-        except Exception:
-            LOG.exception("grounding rewrite failed")
-            new = ""
-        still = ungrounded_numbers(new, state.tool_calls) if new else bad
-        use_new = bool(new) and len(still) < len(bad)
+        for label, agent, prompt, turns in attempts:
+            msg = {"role": "user",
+                   "content": prompt.format(numbers=", ".join(best_bad))}
+            try:
+                fixed = await asyncio.wait_for(
+                    Runner.run(agent, history + [msg], context=state,
+                               hooks=RecordToolCalls(), max_turns=turns),
+                    timeout=GROUNDING_QUERY_TIMEOUT_S,
+                )
+                new = self._full_text(fixed)
+            except Exception:
+                LOG.exception("grounding fix (%s) failed", label)
+                continue
+            still = ungrounded_numbers(new, state.tool_calls) if new else best_bad
+            if new and len(still) < len(best_bad):
+                best, best_bad, how = new, still, label
+                history = fixed.to_input_list()
+            if not best_bad:
+                break
         state.tool_calls.append({
             "name": "grounding_check",
             "args": {"unmatched_numbers": bad},
-            "result": "answer rewritten" if use_new else "rewrite not used",
+            "result": how,
             "agent": self.agent.name,
         })
-        state.ungrounded = still if use_new else bad
-        return new if use_new else response
+        state.ungrounded = best_bad
+        return best
