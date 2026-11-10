@@ -47,7 +47,9 @@
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
   /* Long titles wrap so the number columns stay in view; numbers never wrap. */
   th, td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-  td { overflow-wrap: anywhere; min-width: 3em; }
+  /* break-word (not anywhere) wraps between words and only splits a word too long
+     for the column, so short names like "Munchkin" are never cut. */
+  td { overflow-wrap: break-word; min-width: 3em; }
   th, td.num, td.id { white-space: nowrap; }
   th { position: sticky; top: 0; background: #eef1f5; }
   th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }

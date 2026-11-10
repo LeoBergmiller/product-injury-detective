@@ -35,14 +35,24 @@ def _is_num(v: Any) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
+# Small whole counts ("30 reports") for picking the table when the answer has no big
+# ones; not part of an age band ("65+", "0-4"), a range, a decimal or a percentage.
+SMALL_COUNT = re.compile(r"(?<![\d.,\-–/])(\d{2,})(?![\d,+%]|\.\d|\s*(?:-|–|percent))")
+
+
 def _answer_numbers(text: str) -> list[tuple[float, bool]]:
-    """Counts in the answer, in reading order: (value, visibly rounded)."""
+    """Counts in the answer, in reading order: (value, visibly rounded). Comma counts
+    and "N million"; if there are none, whole numbers of 2+ digits that aren't years."""
     found = [
         (m.start(), float(m.group(1).replace(",", "")), m.group(1).endswith(",000"))
         for m in NUM_COMMA.finditer(text)
     ]
     found += [(m.start(), float(m.group(1)) * 1e6, True)
               for m in NUM_MILLION.finditer(text)]
+    if not found:
+        found = [(m.start(), float(m.group(1)), False)
+                 for m in SMALL_COUNT.finditer(text)
+                 if not 1900 <= int(m.group(1)) <= 2100]
     return [(v, rounded) for _, v, rounded in sorted(found)]
 
 

@@ -277,6 +277,22 @@ def test_table_follows_answer() -> None:
     assert build_table(st, "about 72,000 visits")["columns"][0] == "age_group"
 
 
+def test_table_follows_small_counts() -> None:
+    # Seen live: "Graco (30 reports) ..." but the table showed a later report list.
+    st = RunState()
+    st.record("run_sql", {"query": "SELECT brand, COUNT(*) AS reports ..."},
+              json.dumps({"columns": ["brand", "reports"],
+                          "rows": [["Graco", 30], ["Baby Trend", 29]],
+                          "truncated": False}), "Product-Injury Detective")
+    st.record("run_sql", {"query": "SELECT brand, product_description ..."},
+              json.dumps({"columns": ["brand", "product_description"],
+                          "rows": [["Joie", "Orzo stroller"]],
+                          "truncated": False}), "Product-Injury Detective")
+    answer = ("In 2025 the data cannot rank brands for adults 65+. Reports name "
+              "Graco (30 reports) and Baby Trend (29 reports).")
+    assert build_table(st, answer)["columns"] == ["brand", "reports"]
+
+
 def test_age_order_and_all_row() -> None:
     st = RunState()
     groups = ["0-4", "15-24", "25-44", "45-64", "5-14", "65+", "all"]  # text order
