@@ -21,7 +21,13 @@ from detective.agent import Detective  # noqa: E402
 from detective.config import AgentConfig  # noqa: E402
 from detective.db import guardrail_message  # noqa: E402
 from detective.grounding import normalize_visits, ungrounded_numbers  # noqa: E402
-from detective.present import build_caveats, build_chart, build_table  # noqa: E402
+from detective.present import (  # noqa: E402
+    COUNTS_NOT_RATES,
+    build_caveats,
+    build_chart,
+    build_table,
+    drop_stated,
+)
 from detective.recall_match import plausible_for_product, product_nouns  # noqa: E402
 from detective.tools import RunState  # noqa: E402
 
@@ -188,6 +194,46 @@ def test_age_comparison() -> None:
     chart = build_chart(wide, CFG)
     assert chart["series"] == "column" and len(chart["data"]) == 4
     assert st.tool_calls[0]["agent"] == "Product-Injury Detective"
+
+
+def test_table_follows_answer() -> None:
+    st = RunState()
+    st.record("run_sql", {"query": "SELECT body_part, n_cases, est_visits FROM ..."},
+              json.dumps({"columns": ["body_part", "n_cases", "est_visits"],
+                          "rows": [["Ankle", 601, 19431.2], ["Knee", 357, 11850.4]],
+                          "truncated": False}), "Product-Injury Detective")
+    st.record("run_sql", {"query": "SELECT age_group, n_cases, est_visits FROM ..."},
+              json.dumps({"columns": ["age_group", "n_cases", "est_visits"],
+                          "rows": [["0-4", 1108, 27085.0], ["5-14", 2522, 72057.0]],
+                          "truncated": False}), "Product-Injury Detective")
+    answer = "The ankle leads (19,431 visits), then the knee. By age: 0-4 27,085 ..."
+    assert build_table(st, answer)["columns"][0] == "body_part"
+    assert build_table(st, "")["columns"][0] == "age_group"  # no numbers -> last
+    assert build_table(st, "about 72,000 visits")["columns"][0] == "age_group"
+
+
+def test_age_order_and_all_row() -> None:
+    st = RunState()
+    groups = ["0-4", "15-24", "25-44", "45-64", "5-14", "65+", "all"]  # text order
+    st.record("run_sql", {"query": "SELECT age_group, n_cases, est_visits ..."},
+              json.dumps({"columns": ["age_group", "n_cases", "est_visits"],
+                          "rows": [[g, 100 + i, 1000.0 + i] for i, g in
+                                   enumerate(groups)],
+                          "truncated": False}), "Product-Injury Detective")
+    table = build_table(st)
+    assert [r[0] for r in table["rows"]] == [
+        "0-4", "5-14", "15-24", "25-44", "45-64", "65+", "all"]
+    chart = build_chart(table, CFG)
+    assert [d["x"] for d in chart["data"]] == [
+        "0-4", "5-14", "15-24", "25-44", "45-64", "65+"]
+
+
+def test_caveat_not_repeated() -> None:
+    answer = "There were 81,016 visits. " + COUNTS_NOT_RATES
+    assert drop_stated([COUNTS_NOT_RATES, "Recalls shown are possible matches."],
+                       answer) == ["Recalls shown are possible matches."]
+    assert drop_stated([COUNTS_NOT_RATES], "There were 81,016 visits.") == [
+        COUNTS_NOT_RATES]
 
 
 def main() -> None:

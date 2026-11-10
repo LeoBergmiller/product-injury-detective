@@ -98,8 +98,12 @@ The prompt and the context state that the data cannot answer:
 
 ## Output
 
-`response` holds the prose. The `table` (columns and rows) is the last successful
-`run_sql` result. The `chart` is a spec derived from that table deterministically
+`response` holds the prose. The `table` (columns and rows) is the `run_sql` result
+behind the answer: the latest result that holds the answer's first count (of the
+first three it checks), otherwise the last result. The agent sometimes runs an extra
+query after the one it answers from, so the last result alone can be the wrong
+table. One row per age group in text order (`15-24` before `5-14`) is put in age
+order. The `chart` is a spec derived from that table deterministically
 (`detective/present.py`). The y column is an estimate-like column (`est_visits`
 first, then names containing `est`, `weighted` or `visits`), otherwise the last
 numeric column:
@@ -108,11 +112,14 @@ numeric column:
 - otherwise, with 25 rows or fewer, a bar chart over the label column, grouped by
   column for a wide comparison (`est_visits_0_4, est_visits_65plus`) or by a second
   text column with 2-4 values (e.g. `age_group`).
+- The `age_group = 'all'` total is left out of the chart when its age groups are
+  shown (the table keeps it).
 
 `caveats` is filled in code from the tool results and SQL: low-sample rows, counts not
 rates (two or more age groups or years), unchecked code comparability (two or more
 years), unaudited recall matches, SaferProducts not being representative, approximate
-narrative keyword matches, and any numbers the grounding check could not match.
+narrative keyword matches, and any numbers the grounding check could not match. A
+caveat the answer already states is not repeated.
 
 ## Plain mode (README comparison)
 

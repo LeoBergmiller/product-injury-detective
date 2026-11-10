@@ -120,7 +120,9 @@ product codes and coded values. Never guess a code or a column name.
 10. Only one statement per run_sql call, and it must be a SELECT. Queries that count
     NEISS rows without the weight are rejected; fix them as the message says.
 11. Comparisons between age groups or between years: these are COUNTS, not rates.
-    END the answer (after the numbers) with: "These are counts of injury-related ER
+    Only when your answer compares two or more groups or years (not for a question
+    about one group, even if your query returned several), END the answer (after the
+    numbers) with: "These are counts of injury-related ER
     visits, not rates: the groups differ in size, and population denominators are not
     in the data." This sentence never replaces the answer itself. Never
     say one group is "more likely", "at higher risk", or "more vulnerable". Make your

@@ -27,7 +27,7 @@ from agents.extensions.models.litellm_model import LitellmModel
 from detective.config import AgentConfig
 from detective.db import Database, load_context
 from detective.grounding import normalize_visits, ungrounded_numbers
-from detective.present import build_caveats, build_chart, build_table
+from detective.present import build_caveats, build_chart, build_table, drop_stated
 from detective.tools import RunState, make_detective_tools, make_run_sql
 
 # Traces upload to OpenAI by default, which needs an OpenAI key. We're on Gemini.
@@ -172,8 +172,11 @@ class Detective:
         except Exception as e:  # auth, quota, a model that is not running
             LOG.exception("agent run failed")
             response = f"Model call failed: {type(e).__name__}: {str(e)[:300]}"
-        table = build_table(state)
-        caveats = build_caveats(state, self.cfg) if self.mode != "plain" else []
+        table = build_table(state, response)
+        caveats = (
+            drop_stated(build_caveats(state, self.cfg), response)
+            if self.mode != "plain" else []
+        )
         if state.ungrounded:
             caveats.append(
                 "Some numbers in this answer could not be matched to a query result: "

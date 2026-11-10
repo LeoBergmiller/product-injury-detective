@@ -1,7 +1,8 @@
 """Turn a run's tool results into the response's table, chart spec, and caveats.
 
-Deterministic: the table is the last successful run_sql result; the chart is derived
-from it by simple rules; caveats come from what the tools returned.
+Deterministic: the table is the run_sql result behind the answer's headline number
+(else the last one); the chart is derived from it by simple rules; caveats come from
+what the tools returned, minus any the answer already states.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ import re
 from typing import Any
 
 from detective.config import AgentConfig
+from detective.grounding import NUM_COMMA, NUM_MILLION
 from detective.tools import RunState
 
 Y_PREFERENCE = ("est_visits", "estimated_visits", "est", "weighted", "visits")
@@ -17,6 +19,7 @@ NOT_Y = {"year", "rank", "product_code", "code", "neiss_code", "recall_id", "psu
 # Unweighted sample counts: never the main series when a weighted column exists.
 SAMPLE_COUNT = re.compile(r"^(n|n_cases|cases|sample_cases|case_count|num_cases|n_sample)$")
 MAX_LINE_SERIES = 6
+AGE_ORDER = ["0-4", "5-14", "15-24", "25-44", "45-64", "65+", "unknown", "all"]
 LABEL_PREFERENCE = ("product_title", "label", "title", "name", "age_group")
 COUNTS_NOT_RATES = (
     "These are counts of injury-related ER visits, not rates: the groups differ in "
@@ -32,15 +35,54 @@ def _is_num(v: Any) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
-def build_table(state: RunState) -> dict[str, Any] | None:
+def _answer_numbers(text: str) -> list[tuple[float, bool]]:
+    """Counts in the answer, in reading order: (value, visibly rounded)."""
+    found = [
+        (m.start(), float(m.group(1).replace(",", "")), m.group(1).endswith(",000"))
+        for m in NUM_COMMA.finditer(text)
+    ]
+    found += [(m.start(), float(m.group(1)) * 1e6, True)
+              for m in NUM_MILLION.finditer(text)]
+    return [(v, rounded) for _, v, rounded in sorted(found)]
+
+
+def _holds(res: dict[str, Any], v: float, rounded: bool) -> bool:
+    tol = max(1.0, 0.005 * abs(v)) if rounded else 1.0
+    return any(_is_num(x) and abs(x - v) <= tol for row in res["rows"] for x in row)
+
+
+def _age_ordered(columns: list[str], rows: list[list[Any]]) -> list[list[Any]]:
+    """One row per age group in text order ('15-24' before '5-14') -> age order."""
+    if "age_group" not in columns:
+        return rows
+    i = columns.index("age_group")
+    groups = [r[i] for r in rows]
+    if (len(set(groups)) != len(groups) or not set(groups) <= set(AGE_ORDER)
+            or groups != sorted(groups)):
+        return rows  # repeated groups, other labels, or a deliberate ORDER BY
+    return sorted(rows, key=lambda r: AGE_ORDER.index(r[i]))
+
+
+def build_table(state: RunState, response: str = "") -> dict[str, Any] | None:
+    """The query result behind the answer's headline number.
+
+    That is the latest result holding the answer's first count (checking the first
+    three); with no match, the last result. The agent sometimes runs an extra query
+    after the one it answers from, so "last" alone can show the wrong table.
+    """
     if not state.sql_results:
         return None
-    last = state.sql_results[-1]
+    chosen = state.sql_results[-1]
+    for v, rounded in _answer_numbers(response)[:3]:
+        hits = [r for r in state.sql_results if _holds(r, v, rounded)]
+        if hits:
+            chosen = hits[-1]
+            break
     return {
-        "columns": last["columns"],
-        "rows": last["rows"],
-        "truncated": last["truncated"],
-        "sql": last["sql"],
+        "columns": chosen["columns"],
+        "rows": _age_ordered(chosen["columns"], chosen["rows"]),
+        "truncated": chosen["truncated"],
+        "sql": chosen["sql"],
     }
 
 
@@ -51,6 +93,14 @@ def build_chart(
         return None
     cols: list[str] = table["columns"]
     rows: list[list[Any]] = table["rows"]
+    if "age_group" in cols:
+        # The 'all' total next to its own age groups dwarfs them; the table keeps it.
+        ai = cols.index("age_group")
+        parts = [r for r in rows if r[ai] != "all"]
+        if parts and len(parts) < len(rows):
+            rows = parts
+        if len(rows) < 2:
+            return None
     numeric = [
         c for i, c in enumerate(cols)
         if all(_is_num(r[i]) or r[i] is None for r in rows)
@@ -181,3 +231,11 @@ def build_caveats(state: RunState, cfg: AgentConfig) -> list[str]:
             "spellings and include unrelated mentions."
         )
     return caveats
+
+
+def drop_stated(caveats: list[str], response: str) -> list[str]:
+    """Drop caveats the answer already states (the prompt asks the agent to end
+    comparisons with the counts-not-rates sentence itself), so it isn't shown twice."""
+    said = " ".join(response.lower().split())
+    return [c for c in caveats
+            if re.split(r"[:;.]", c, maxsplit=1)[0].lower() not in said]

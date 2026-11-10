@@ -1021,7 +1021,7 @@
     {
      "name": "search_text",
      "type": "VARCHAR",
-     "notes": "Lowercased title + product names + hazards + description, for search"
+     "notes": "Lowercased title + product names + category names + hazards + description, for search"
     }
    ]
   },
