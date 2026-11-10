@@ -1,5 +1,5 @@
 {
-  "deploy_url": "https://REPLACE-WITH-CLOUD-RUN-URL.run.app",
+  "deploy_url": "https://product-injury-detective-ux3bbl6loa-ue.a.run.app",
   "authors": ["avr2141", "lab2309", "rl3575"],
   "path": "text2sql"
 }
