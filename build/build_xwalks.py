@@ -9,8 +9,9 @@ product_recall_xwalk: a TEXT-based DRAFT for human review. Scope: union of the t
   NEISS codes by weighted visits (any slot, placeholder and untitled codes excluded)
   for each scope group (all ages, under 5, 65+). Candidates:
     - text_search: title-derived terms matched (word boundaries) in recall text.
-        high   = term in the recall title
-        medium = term in a recall product name / category name only
+        high   = term in the recall title, used as the product noun
+        medium = term in the title used as a modifier ("Floor Lamps"), or in a
+                 recall product name / category name only
         low    = term only in hazards / description
     - sp_category_id: recall Products[].CategoryID (older recalls only) ->
         safer_category_xwalk -> NEISS code. confidence = medium.

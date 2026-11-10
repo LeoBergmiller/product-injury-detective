@@ -1,18 +1,20 @@
 """Build the NEISS Parquet tables defined in docs/SCHEMA.md.
 
 Outputs (data/processed/):
-  neiss_cases.parquet, neiss_case_products.parquet, neiss_codebook.parquet,
-  product_code_stability.parquet
+  neiss_cases/neiss_cases_{year}.parquet (one file per year), neiss_case_products.parquet,
+  neiss_codebook.parquet, product_code_stability.parquet
 
 Steps:
 1. Repair each yearly TSV into tmp/: a few narratives contain an unquoted CR LF, which
    splits one record across two physical lines. Lines are joined (CR LF -> one space)
-   until the quote-aware field count reaches 25. Every repair is logged.
+   until the quote-aware field count reaches 25; a stray lone CR or LF inside a record
+   is also replaced by a space. Every repair is logged.
 2. Load all years with DuckDB (all VARCHAR, strict), validate, and type per SCHEMA.md
    (age rule, 0 -> NULL for empty product slots, narrative era).
 3. Long-form product slots (any-slot counting; deduplicated per case).
 4. Codebook from the NEISS data dictionary (sheet "2019 and beyond").
-5. Product-code presence by year (empirical stability; comparability PDFs pending).
+5. Product-code presence by year (empirical stability; the comparability tables are
+   not parsed yet, so comparability_checked stays NULL).
 
 Usage: uv run python build/build_neiss.py [--config build/config.yaml]
 """

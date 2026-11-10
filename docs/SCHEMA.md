@@ -174,7 +174,8 @@ From the January 2025 coding manual, Appendix H. 806 codes; covers every 2025 co
 | source_page | INTEGER | no | PDF page |
 | source | VARCHAR | no | Manual edition and appendix |
 
-Codes retired before 2025 have no title until the comparability tables are added.
+Codes retired before 2025 have no title until the comparability tables (now in
+`docs/`) are parsed.
 - Seven such codes appear in 2019-2024: 1329, 1543, 1545, 1710, 1903, 3215, and 5042.
   Together they are 0.35% of weighted case-product mentions.
 - They are allowlisted in `build/config.yaml` (`neiss.untitled_codes_allowed`). The
@@ -187,8 +188,8 @@ Empirical presence of each code in the loaded years, from `build_neiss.py`.
 Grain: `product_code`.
 
 **Presence is not definitional stability.** A code can appear every year and still be
-redefined, split, or merged. Only the comparability tables can show that, and they are
-not in `docs/` yet, so `comparability_checked` is NULL.
+redefined, split, or merged. Only the comparability tables can show that. The 2024
+and 2025 PDFs are in `docs/` but not parsed yet, so `comparability_checked` is NULL.
 
 | column | type | null | notes |
 |---|---|---|---|
@@ -220,7 +221,7 @@ Grain: `recall_id`. A response containing `RecallID = 0` or a `Title` starting w
 | injuries_text | VARCHAR | yes | `Injuries[].Name` joined. Free text, no counts |
 | remedies_text | VARCHAR | yes | `Remedies[].Name` joined |
 | companies_text | VARCHAR | yes | Manufacturer/retailer/importer/distributor `Name`s joined |
-| search_text | VARCHAR | no | Lowercased title + product names + hazards + description, for search |
+| search_text | VARCHAR | no | Lowercased title + product names + category names + hazards + description, for search |
 
 ### recall_products
 Grain: (`recall_id`, `product_seq`). `CategoryID` / `Type` are stored where present
@@ -360,8 +361,9 @@ All changes are additive or loosen a rule. No column was removed or renamed.
    per-file limit; the narratives are 92 MB of that. The columns are unchanged.
 2. **Thin DB:** `neiss_cases` and `neiss_case_products` are views over Parquet. A DB
    with the narratives stored natively measured 207 MB.
-3. **New table `product_code_stability`.** Comparability-table parsing is blocked
-   because the PDFs are not in `docs/`.
+3. **New table `product_code_stability`.** Comparability-table parsing was blocked
+   because the PDFs were not in `docs/`. They were added on 2026-11-08 but are not
+   parsed yet.
 4. **Untitled-code allowlist.** The rule was "fail on any untitled code". It is now
    "fail unless allowlisted"; 7 retired codes are allowlisted, and views label them.
 5. **`recall_products.category_id` / `category_name` added.** The earlier "always

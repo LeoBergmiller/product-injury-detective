@@ -64,12 +64,25 @@ The rules baked into the prompt:
 
 **Guardrails** (`tool_input_guardrail`, like the starter's NA guardrail). Each one returns
 an explanation the model can act on.
-1. **Unweighted counts.** A query that reads `neiss_cases`, `neiss_case_products` or
-   `v_case_products` and uses `COUNT` without `weight` is rejected.
-2. **Raw age filters.** A filter such as `age_raw < N` is rejected and redirected to
+The checks are in `detective/db.py` (`guardrail_message`), in this order:
+1. **No table read.** A query that reads no table or view (numbers typed into the SQL)
+   is rejected: numbers must come from the data.
+2. **Unweighted counts.** A query that reads `neiss_cases`, `neiss_case_products` or
+   `v_case_products` and uses `COUNT` without `weight` (or `est_visits`) is rejected.
+3. **Raw age filters.** A filter such as `age_raw < N` is rejected and redirected to
    `age_years`.
-3. **Slot-1 grouping.** A query that groups by `product_1` alone is rejected and
+4. **Summing the long product table.** `SUM` over `v_case_products` /
+   `neiss_case_products` without one `product_code` or a `GROUP BY product_code` is
+   rejected, because a case with several products would be counted once per product.
+5. **Slot-1 grouping.** A query that groups by `product_1` alone is rejected and
    redirected to any-slot counting.
+
+**Grounding check** (`detective/grounding.py`, run after the answer). Every count,
+"N million" and percentage in the answer must match a number in that turn's tool
+results (exactly, or within 0.5% when visibly rounded). If any doesn't, the model is
+asked once to rewrite the answer with tool calls forbidden (`tool_choice="none"`).
+Numbers still unmatched are listed in `caveats`, and the check is logged in
+`tool_calls` as `grounding_check`.
 
 ## Answers it must refuse or qualify
 
@@ -86,13 +99,20 @@ The prompt and the context state that the data cannot answer:
 ## Output
 
 `response` holds the prose. The `table` (columns and rows) is the last successful
-`run_sql` result. The `chart` is a spec derived from that table deterministically:
-- a line chart if there is a `year` column;
-- otherwise a bar chart over the first label column and the first estimate column,
-  when there are 25 rows or fewer.
+`run_sql` result. The `chart` is a spec derived from that table deterministically
+(`detective/present.py`). The y column is an estimate-like column (`est_visits`
+first, then names containing `est`, `weighted` or `visits`), otherwise the last
+numeric column:
+- with a `year` column, a line chart: one line per label (up to 6), or one line per
+  measure column for a wide table such as `year, bicycles, e_bicycles`;
+- otherwise, with 25 rows or fewer, a bar chart over the label column, grouped by
+  column for a wide comparison (`est_visits_0_4, est_visits_65plus`) or by a second
+  text column with 2-4 values (e.g. `age_group`).
 
-`caveats` is filled from the tool results: low-sample rows, unaudited recall matches,
-and SaferProducts not being representative.
+`caveats` is filled in code from the tool results and SQL: low-sample rows, counts not
+rates (two or more age groups or years), unchecked code comparability (two or more
+years), unaudited recall matches, SaferProducts not being representative, approximate
+narrative keyword matches, and any numbers the grounding check could not match.
 
 ## Plain mode (README comparison)
 
@@ -101,7 +121,7 @@ Set `AGENT_MODE=plain` to get a baseline agent:
 - a one-line prompt;
 - no guardrails and no other tools;
 - a single view `neiss` with the **raw file's column names** (`Age`, `Product_1`,
-  `Weight`, ...), plus `recalls`.
+  `Weight`, ...), plus `product_codes` (code and title only) and `recalls`.
 
 `build/run_readme_cases.py` runs both README cases in both modes and writes traces to
 `docs/traces/`. `build/baseline_no_tools.py` asks the same model the three sample

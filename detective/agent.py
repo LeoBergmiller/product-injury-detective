@@ -121,7 +121,8 @@ class Detective:
         return cls(cfg=cfg, mode=mode, agent=agent, db=db)
 
     async def _wrap_up(self, data: RunErrorHandlerInput[RunState]) -> str | None:
-        """At the turn limit, answer once more WITHOUT tools from what was found."""
+        """At the turn limit, answer once more, with tool calls forbidden, from what
+        was found."""
         closer = no_tool_closer(data.run_data.last_agent)
         history = list(data.run_data.history) + [
             {"role": "user", "content": WRAP_UP}
@@ -204,7 +205,8 @@ class Detective:
         return "\n\n".join(texts) if len(texts) > 1 else final
 
     async def _ground(self, result: Any, response: str, state: RunState) -> str:
-        """Rewrite once (no tools) if the answer has numbers no tool returned."""
+        """Rewrite once (tool calls forbidden) if the answer has numbers no tool
+        returned."""
         bad = ungrounded_numbers(response, state.tool_calls)
         if not bad:
             return response

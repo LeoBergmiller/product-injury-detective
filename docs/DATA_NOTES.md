@@ -427,7 +427,8 @@ or CV rule is still unverified; `docs/SCHEMA.md` uses a configurable project thr
 **unverified** and not in the table.
 **Scope:** this is the January 2025 manual only. Codes used in earlier years but retired
 before 2025 won't have titles. We need the comparability tables (2024, 2025) before
-loading 2019-2024.
+loading 2019-2024. (Later: 2019-2024 were loaded with the seven untitled codes
+allowlisted; see "Offline build, 2019-2025" below.)
 
 ### SaferProducts category name <-> NEISS title (2026-11-05, local, no requests)
 - Method: normalize each name to lowercase alphanumerics separated by single spaces.
@@ -512,7 +513,8 @@ have the **identical 25-column header**, ASCII text, and CRLF line endings.
 - **Presence:** 710 codes appear in all seven years and 94 do not. Presence is not
   definitional stability.
 - **Comparability PDFs (2024, 2025) are not in `docs/`**, so the definitional-stability
-  check is blocked.
+  check is blocked. (Update 2026-11-08: both PDFs are now in `docs/`; still not
+  parsed.)
 
 **Codebook:** 151 entries from the "2019 and beyond" sheet. The age range rows are
 skipped; Rule 4 handles age.

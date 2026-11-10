@@ -59,7 +59,8 @@ def _args(raw: str | None) -> dict[str, Any]:
 
 @tool_input_guardrail
 def neiss_rules_guardrail(data: Any) -> ToolGuardrailFunctionOutput:
-    """Reject SQL that breaks the NEISS rules (unweighted counts, raw age, slot 1)."""
+    """Reject SQL that breaks the data rules (see db.guardrail_message): no table read,
+    unweighted counts, raw age filters, summing the long product table, slot 1 only."""
     args = _args(data.context.tool_arguments)
     message = guardrail_message(str(args.get("query", "")))
     if message is None:

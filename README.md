@@ -44,6 +44,7 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
   - `run_sql` accepts exactly one SELECT, with a 200-row cap and a 20 s timeout.
 - **Guardrails** reject SQL that would give a wrong number, with a message the model
   can act on:
+  - SQL that reads no table (numbers typed into the query);
   - unweighted `COUNT(*)` over NEISS rows;
   - range filters on raw `age_raw`;
   - grouping by `product_1` alone;
@@ -51,7 +52,8 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
 - **Grounding check.**
   - After each answer, every count, million and percentage must match a value in
     that turn's tool results.
-  - If one doesn't, the model is asked once to rewrite the answer without tools.
+  - If one doesn't, the model is asked once to rewrite the answer, with tool calls
+    forbidden.
   - Anything still unmatched is listed in `caveats`.
 - **Recalls are "possible match (not reviewed)".** `search_recalls` keeps a recall only
   if the recalled product's head noun is the NEISS product. For example, it drops
@@ -72,7 +74,8 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
 
 - **Reuse terms.** None of the CPSC pages we checked states a license; see
   [`docs/DATA_NOTES.md`](docs/DATA_NOTES.md). Recall-to-product links come from text
-  matching and are not reviewed (`product_recall_xwalk.audited = false`).
+  matching and are not reviewed (`product_recall_xwalk.audited = false`); a 60-row
+  spot check is under [Known limitations](#known-limitations).
 - **Repaired records.** Six NEISS records were split by stray line breaks inside the
   narrative. They are documented in `docs/DATA_NOTES.md`, and `build/build_neiss.py`
   logs each fix to `data/processed/tmp/neiss_repairs.json` on every build. That

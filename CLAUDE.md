@@ -15,11 +15,11 @@ Framing: practical for parents and caregivers, with an older-adult angle (e.g. 6
 2. CPSC Recalls API: https://www.saferproducts.gov/RestWebServices/Recall?format=json. REST, JSON or XML, no key, public domain. Returns every match in one array (no paging). A malformed date returns HTTP 200 with an error pseudo-recall instead of an error status.
 3. SaferProducts.gov incident-report API (OData): https://www.SaferProducts.gov/WebApi/Cpsc.Cpsrms.Web.Api.svc/ . Needs an application key. Auth: send the key as the basic-auth username with a BLANK password. Limit: 100 requests per second per key. Fields include incident description, product brand/model, victim age/sex.
 
-## NOT VERIFIED (check, then record in docs/DATA_NOTES.md)
-- Whether a 2025 NEISS file exists, and the exact reuse terms for NEISS.
-- Exact NEISS column names and product-code scheme (changes across years).
-- Whether NEISS product codes map cleanly to recall product names. Assume a fuzzy crosswalk we must build and document.
-- Whether Census age-group population is needed as a rate denominator (fallback idea, unverified).
+## Verification status (details in docs/DATA_NOTES.md; open items under "Unverified / open")
+- 2025 NEISS file: exists; 2019-2025 are loaded. NEISS reuse terms: still unverified (no CPSC page we checked states a license).
+- NEISS column names: verified identical for 2019-2025 (pre-2019 unverified). Product codes: titles from the January 2025 coding manual; 7 retired codes have no title; the 2024/2025 comparability tables are in docs/ but not parsed.
+- NEISS -> recall crosswalk: no shared IDs, so it is text-based (build/build_xwalks.py). None of it is audited; a 60-row spot check is in docs/DATA_NOTES.md.
+- Census denominators: not used. The agent reports counts, not rates, and says so.
 
 ## Secrets
 - The SaferProducts key lives in .env as SAFERPRODUCTS_KEY. .env is gitignored. Never print, log, or commit the key. .env.example holds only the placeholder.
