@@ -29,7 +29,9 @@
   .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px;
           padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; color: var(--ink); }
   .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
-  main { padding: 18px 0 140px; }
+  /* main also has class "wrap", whose padding would win over a plain `main` rule and
+     drop the bottom space; without it the last answer ends under the fixed input bar. */
+  main.wrap { padding: 18px 20px 140px; }
   .msg { margin: 0 0 16px; }
   .user { text-align: right; }
   .user .bubble { display: inline-block; background: var(--ink); color: #fff;
@@ -54,6 +56,7 @@
   th { position: sticky; top: 0; background: #eef1f5; }
   th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .tablenote { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+  .tablenote:empty { display: none; }
   details { margin-top: 12px; font-size: 13px; }
   summary { cursor: pointer; color: var(--muted); }
   .call { border-left: 3px solid var(--line); margin: 8px 0; padding: 4px 10px; }
@@ -165,11 +168,18 @@
     const body = t.rows.map((r) => "<tr>" + r.map((v, i) => ids[i]
       ? `<td class="id">${esc(v === null ? "" : v)}</td>`
       : `<td class="${typeof v === "number" ? "num" : ""}">${fmt(v)}</td>`).join("") + "</tr>").join("");
-    const n = t.rows.length;
-    const note = t.truncated ? `Showing the first ${n} rows.`
-      : n > 12 ? `${n} rows (scroll the table to see all).` : "";
+    const note = t.truncated ? `Showing the first ${t.rows.length} rows.` : "";
     return `<div class="tablewrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
-      + (note ? `<small class="tablenote">${note}</small>` : "");
+      + `<small class="tablenote">${note}</small>`;
+  }
+
+  // After rendering: if the table is taller than its box (many rows, or long titles
+  // wrapping on a narrow screen), say so, since the box scrolls on its own.
+  function noteScroll(container, t) {
+    const wrap = container.querySelector(".tablewrap"), note = container.querySelector(".tablenote");
+    if (!wrap || !note || note.textContent) return;
+    if (wrap.scrollHeight > wrap.clientHeight + 2)
+      note.textContent = `${t.rows.length} rows (scroll the table to see all).`;
   }
 
   const COLORS = ["#2f6f8f", "#b4442a", "#5f8f3e", "#7a4f9a"];
@@ -275,6 +285,7 @@
       const chart = data.chart ? `<div class="chart">${data.chart.type === "line" ? renderLine(data.chart) : renderBar(data.chart)}</div>` : "";
       const cav = data.caveats?.length ? `<div class="caveats"><ul>${data.caveats.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : "";
       a.innerHTML = `<div class="text">${linkify(data.response)}</div>${cav}${chart}${renderTable(data.table)}${renderCalls(data.tool_calls)}`;
+      noteScroll(a, data.table);
     } catch (e) {
       a.innerHTML = `<span class="thinking">Request failed: ${esc(e.message)}</span>`;
     } finally {
