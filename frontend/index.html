@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Product-Injury Detective</title>
+<title>Safety Detective</title>
 <style>
   :root {
     --ink: #1d2433; --muted: #5d6677; --line: #dde1e8; --bg: #f6f7f9; --card: #fff;
@@ -25,6 +25,7 @@
   .fact small { color: var(--muted); }
   .how { font-size: 14px; color: var(--muted); }
   .how ol { margin: 6px 0 0; padding-left: 18px; }
+  .how .note { margin: 8px 0 0; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 18px; }
   .chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px;
           padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; color: var(--ink); }
@@ -82,27 +83,30 @@
   <div class="wrap">
     <div class="hero">
       <div>
-        <h1>Product-Injury <span>Detective</span></h1>
-        <p class="lede">Which everyday products send people to the emergency room, and have
-          any of them been recalled? Ask in plain English. The detective writes SQL over
-          U.S. Consumer Product Safety Commission data and shows its work.</p>
-        <p class="how"><b>For</b> parents, caregivers, and anyone looking after older adults
-          who want numbers, not anecdotes: compare children under 5 with adults 65+,
-          find the products behind the visits, and check for possible recalls.</p>
+        <h1>Safety <span>Detective</span></h1>
+        <p class="lede"><b>Help keep the people you care about safe.</b> See which
+          everyday products and hazards most often send people to the emergency room at
+          each age, from toddlers to grandparents, so you know what to watch out for. Then
+          check whether any of them have been recalled. Built for parents, caregivers, and
+          anyone looking after an older adult. Ask in plain English: the detective looks
+          it up in U.S. Consumer Product Safety Commission data and shows how it got every
+          number.</p>
       </div>
       <div class="how">
         <div class="facts">
-          <div class="fact"><b>2019-2025</b><small>NEISS ER cases, weighted to national estimates</small></div>
-          <div class="fact"><b>10,082</b><small>CPSC recalls</small></div>
-          <div class="fact"><b>71,858</b><small>SaferProducts.gov reports</small></div>
+          <div class="fact"><b>2.4M</b><small>ER injury cases, 2019-2025</small></div>
+          <div class="fact"><b>10,082</b><small>product recalls</small></div>
+          <div class="fact"><b>71,858</b><small>consumer safety reports</small></div>
         </div>
         <ol>
-          <li>Ask about a product, an age group, or a year.</li>
-          <li>Read the answer, the table and the chart.</li>
-          <li>Open "How I found this" to see every query.</li>
+          <li>Ask about a product, any age group, or a year, or try an example below.</li>
+          <li>Read the answer, then the table and chart.</li>
+          <li>Open "How I found this" to see every query it ran.</li>
         </ol>
-        It counts injury-related ER visits, not rates: it can't tell you per-use risk,
-        which age group is "riskier", brands in NEISS, or causes.
+        <p class="note"><b>What it can't tell you:</b> how risky something is per use (it
+          counts ER visits, not how often things are used), whether one age group is
+          "riskier" (it has no population counts), which brand or model is safer, or what
+          caused an injury.</p>
       </div>
     </div>
     <div class="chips" id="chips"></div>

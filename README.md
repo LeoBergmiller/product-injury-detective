@@ -71,7 +71,7 @@ browser -> POST /chat -> one agent (OpenAI Agents SDK + LitellmModel -> Vertex G
 
 | Source | Owner | What | How we got it | Table(s) |
 |---|---|---|---|---|
-| **NEISS** (CPSC National Electronic Injury Surveillance System) | lab2309 | ER cases 2019-2025, a probability sample of ~100 hospitals with a national weight per case. 2,442,005 cases | Yearly TSVs from cpsc.gov/Research--Statistics/NEISS-Injury-Data, plus the data dictionary and the January 2025 coding manual | `neiss_cases` (one Parquet per year), `neiss_case_products`, `neiss_codebook`, `product_codes`, `product_code_stability` |
+| **NEISS** (CPSC National Electronic Injury Surveillance System) | lab2309 | ER cases 2019-2025, a probability sample of hospitals (77-84 reporting per year in 2019-2025) with a national weight per case. 2,442,005 cases | Yearly TSVs from cpsc.gov/Research--Statistics/NEISS-Injury-Data, plus the data dictionary and the January 2025 coding manual | `neiss_cases` (one Parquet per year), `neiss_case_products`, `neiss_codebook`, `product_codes`, `product_code_stability` |
 | **CPSC Recalls API** | rl3575 | 10,082 recalls, 1973-06-08 to 2026-11-05 | `saferproducts.gov/RestWebServices/Recall`, one request per year (no key) | `recalls`, `recall_products` |
 | **SaferProducts.gov** (OData API) | avr2141 | 71,858 voluntary incident reports, 2011-03 to 2026-10 | Full paged pull with an application key (key only in `.env`, never committed) | `safer_incidents`, `safer_codebook`, `safer_category_xwalk` |
 
